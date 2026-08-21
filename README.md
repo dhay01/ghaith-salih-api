@@ -17,7 +17,33 @@ php artisan serve            # http://127.0.0.1:8000
 php artisan queue:work       # required — emails are queued
 ```
 
-Create a dashboard user with `php artisan make:filament-user`.
+Create a dashboard user, then grant it panel access — the two are separate steps
+on purpose:
+
+```sh
+php artisan make:filament-user            # creates the account (no panel access)
+php artisan admin:grant you@example.com   # grants access to /admin
+php artisan admin:grant you@example.com --revoke
+```
+
+### Who can reach `/admin`
+
+`users.is_admin` gates the panel, enforced by `canAccessPanel()` on the `User`
+model. A row in `users` is **not** enough — without the flag, login is rejected
+with the same "credentials do not match" message as a wrong password, so the
+panel never confirms whether an account exists.
+
+`is_admin` is not mass-assignable, and `admin:grant --revoke` refuses to remove
+the last admin. `tests/Feature/AdminPanelAccessTest.php` guards all of this.
+
+This matters because the dashboard lists every applicant's name, phone and
+email, and it is the only authenticated surface in the system.
+
+### Two-factor authentication
+
+Available per user, not enforced: an admin can enable an authenticator app from
+**`/admin/profile`**, with eight recovery codes. To make it mandatory for
+everyone, flip `isRequired: true` in `AdminPanelProvider`.
 
 ### Database
 
