@@ -28,6 +28,7 @@ Route::post('workshops/{workshop}/reservations', [ReservationController::class, 
 
 Route::get('site', [ContentController::class, 'site']);
 Route::get('about', [ContentController::class, 'about']);
+Route::get('pages/{page}', [ContentController::class, 'page']);
 Route::get('hero-slides', [ContentController::class, 'heroSlides']);
 Route::get('categories', [ContentController::class, 'categories']);
 Route::get('photos', [ContentController::class, 'photos']);

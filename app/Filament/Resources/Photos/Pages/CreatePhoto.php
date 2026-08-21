@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\Photos\Pages;
 
+use App\Filament\Concerns\TranslatesFormData;
 use App\Filament\Resources\Photos\PhotoResource;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreatePhoto extends CreateRecord
 {
+    use TranslatesFormData;
+
     protected static string $resource = PhotoResource::class;
 }

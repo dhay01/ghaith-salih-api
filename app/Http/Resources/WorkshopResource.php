@@ -22,6 +22,10 @@ class WorkshopResource extends JsonResource
             'level' => $this->level,
             'location' => $this->location,
             'overview' => $this->overview,
+            'duration' => $this->duration,
+            'attendees' => $this->attendees,
+            'is_past' => $this->isPast(),
+            'images' => $this->imageUrls(),
 
             'price' => $this->price,
             'price_minor' => $this->price_minor,

@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Filament\Resources\Posts\Pages;
+namespace App\Filament\Resources\Pages\Pages;
 
 use App\Filament\Concerns\TranslatesFormData;
-use App\Filament\Resources\Posts\PostResource;
+use App\Filament\Resources\Pages\PageResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
-class EditPost extends EditRecord
+class EditPage extends EditRecord
 {
     use TranslatesFormData;
 
-    protected static string $resource = PostResource::class;
+    protected static string $resource = PageResource::class;
 
     protected function getHeaderActions(): array
     {

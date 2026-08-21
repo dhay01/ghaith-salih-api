@@ -18,6 +18,13 @@ class SiteResource extends JsonResource
             'phone_href' => $this->phone_href,
             'studio' => $this->studio,
             'socials' => $this->socials ?? [],
+            'author' => [
+                'name' => $this->author_name,
+                'location' => $this->author_location,
+                'bio' => $this->author_bio,
+                'follow' => $this->author_follow,
+                'images' => $this->imageUrls(),
+            ],
             // The footer prints a copyright year; deriving it here keeps it from
             // going stale in a hardcoded string on 1 January.
             'year' => (int) now()->format('Y'),

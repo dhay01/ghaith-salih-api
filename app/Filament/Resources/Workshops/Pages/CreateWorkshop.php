@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\Workshops\Pages;
 
+use App\Filament\Concerns\TranslatesFormData;
 use App\Filament\Resources\Workshops\WorkshopResource;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateWorkshop extends CreateRecord
 {
+    use TranslatesFormData;
+
     protected static string $resource = WorkshopResource::class;
 }

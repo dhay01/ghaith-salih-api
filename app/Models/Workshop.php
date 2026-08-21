@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCoverImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
 use Spatie\Translatable\HasTranslations;
 
-class Workshop extends Model
+class Workshop extends Model implements HasMedia
 {
+    use HasCoverImage;
     use HasFactory;
     use HasSlug;
     use HasTranslations;
@@ -25,6 +28,8 @@ class Workshop extends Model
         'level',
         'location',
         'overview',
+        'duration',
+        'attendees',
     ];
 
     protected function casts(): array
@@ -101,5 +106,10 @@ class Workshop extends Model
     public function scopeUpcoming(Builder $query): Builder
     {
         return $query->whereDate('starts_on', '>=', now()->toDateString());
+    }
+
+    public function isPast(): bool
+    {
+        return $this->starts_on?->isBefore(now()->startOfDay()) ?? false;
     }
 }

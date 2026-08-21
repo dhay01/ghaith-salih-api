@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AboutResource;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\HeroSlideResource;
+use App\Http\Resources\PageResource;
 use App\Http\Resources\PhotoResource;
 use App\Http\Resources\PostResource;
 use App\Http\Resources\SiteResource;
 use App\Models\AboutPage;
 use App\Models\Category;
 use App\Models\HeroSlide;
+use App\Models\Page;
 use App\Models\Photo;
 use App\Models\Post;
 use App\Models\SiteSetting;
@@ -27,6 +29,11 @@ class ContentController extends Controller
     public function site(): SiteResource
     {
         return new SiteResource(SiteSetting::current());
+    }
+
+    public function page(Page $page): PageResource
+    {
+        return new PageResource($page);
     }
 
     public function about(): AboutResource

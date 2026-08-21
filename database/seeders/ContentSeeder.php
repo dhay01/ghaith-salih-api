@@ -82,6 +82,8 @@ class ContentSeeder extends Seeder
             'email' => 'creator@ghaithsalih.com',
             'phone' => '+964 770 531 0152',
             'phone_href' => '+9647705310152',
+            'author_name' => 'Ghaith Salih',
+            'author_follow' => 'https://www.instagram.com/ghaith_salih/',
             'socials' => [
                 ['label' => 'Instagram', 'href' => 'https://www.instagram.com/ghaith_salih/'],
                 ['label' => 'Behance', 'href' => '#'],
@@ -90,7 +92,13 @@ class ContentSeeder extends Seeder
         ]);
         $site->setTranslation('tagline', 'en', 'through my lens');
         $site->setTranslation('studio', 'en', 'Baghdad, Iraq');
+        $site->setTranslation('author_location', 'en', 'Baghdad');
+        $site->setTranslation('author_bio', 'en', 'Landscape, panorama & gigapixel photographer based in Baghdad. Writing between shoots.');
         $site->save();
+
+        if (! $site->getFirstMedia('author_photo')) {
+            $this->attach($site, 'portraitStudy', 'author_photo');
+        }
     }
 
     /** @return array<string, Category> */
