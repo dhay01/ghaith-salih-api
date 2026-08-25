@@ -25,3 +25,15 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Media library scratch space. Uploads pass through here on their way into
+# storage/app/public; a 77 MB original was committed from it once, which made
+# the repository too large to push.
+/storage/media-library
+
+# The SQLite database holds real reservation data — applicants' names, phone
+# numbers and email addresses. It must never be committed.
+/database/*.sqlite
+/database/*.sqlite-journal
+/database/*.sqlite-wal
+/database/*.sqlite-shm

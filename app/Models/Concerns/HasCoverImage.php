@@ -23,11 +23,33 @@ trait HasCoverImage
     {
         $this->addMediaCollection($this->coverCollection())
             ->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+            // Stated outright rather than left to the default. An upload that
+            // lands on the `local` disk is stored under storage/app/private,
+            // which the web server will not serve — the image simply 403s and
+            // the gallery shows an empty tile.
+            ->useDisk(config('media-library.disk_name', 'public'))
+            // TIFF belongs here even though the site never serves it: stitched
+            // panoramas and gigapixel originals are usually delivered as TIFF, and
+            // vips reads it happily to build the tiles and web-sized versions.
+            ->acceptsMimeTypes([
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'image/avif',
+                'image/tiff',
+                'image/x-tiff',
+            ]);
     }
 
     public function registerMediaConversions(?Media $media = null): void
     {
+        // GD decodes an entire image into memory to resize it, so a gigapixel
+        // original would need many gigabytes and simply dies. Large uploads get
+        // their web-sized versions from vips instead, which streams.
+        if ($media && static::isOversizedUpload($media)) {
+            return;
+        }
+
         $this->addMediaConversion('thumb')
             ->fit(Fit::Max, 600, 600)
             ->format('webp')
@@ -49,6 +71,21 @@ trait HasCoverImage
         return 'image';
     }
 
+    public static function isOversizedUpload(Media $media): bool
+    {
+        return $media->size > (int) config('gigapixel.large_file_bytes');
+    }
+
+    /**
+     * Overridden by models that can generate their own derivatives with vips.
+     *
+     * @return array<string, string>|null
+     */
+    protected function generatedDerivativeUrls(): ?array
+    {
+        return null;
+    }
+
     /**
      * Absolute URLs for every size, or null when no file has been uploaded yet —
      * the frontend's ImageSlot degrades to a labelled placeholder on null.
@@ -61,6 +98,18 @@ trait HasCoverImage
 
         if (! $media) {
             return null;
+        }
+
+        // A large upload has no GD conversions; whoever generated its vips
+        // derivatives supplies them instead. Falling back to the original keeps
+        // the image visible either way, just heavier.
+        if (static::isOversizedUpload($media)) {
+            $generated = $this->generatedDerivativeUrls();
+
+            return $generated ?? array_fill_keys(
+                ['thumb', 'preview', 'full', 'original'],
+                $media->getFullUrl(),
+            );
         }
 
         return [

@@ -27,6 +27,7 @@ Route::post('workshops/{workshop}/reservations', [ReservationController::class, 
 */
 
 Route::get('site', [ContentController::class, 'site']);
+Route::get('reservation-questions', [ContentController::class, 'reservationQuestions']);
 Route::get('about', [ContentController::class, 'about']);
 Route::get('pages/{page}', [ContentController::class, 'page']);
 Route::get('hero-slides', [ContentController::class, 'heroSlides']);

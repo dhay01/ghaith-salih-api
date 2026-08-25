@@ -17,7 +17,9 @@ use App\Models\Page;
 use App\Models\Photo;
 use App\Models\Post;
 use App\Models\SiteSetting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -26,6 +28,56 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class ContentController extends Controller
 {
+    /**
+     * The intake questions, resolved to the request locale.
+     *
+     * This is the same array the validator derives its rules from, so the form the
+     * visitor sees and the rules it is checked against can no longer drift — which
+     * they could while the frontend kept its own copy. `column` is stripped: which
+     * answers get lifted into real columns is an internal storage detail.
+     */
+    public function reservationQuestions(): JsonResponse
+    {
+        $version = config('reservation_questions.current');
+        $locale = app()->getLocale();
+        $fallback = config('localization.fallback', 'en');
+
+        $translate = function (array $item) use ($locale, $fallback): string {
+            if ($locale !== $fallback && filled($item[$locale] ?? null)) {
+                return $item[$locale];
+            }
+
+            return $item['label'] ?? '';
+        };
+
+        $questions = collect(config('reservation_questions.'.$version, []))
+            ->map(function (array $q) use ($translate): array {
+                $question = Arr::except($q, ['column', 'ar', 'label']);
+                $question['label'] = $translate($q);
+
+                if (isset($q['options'])) {
+                    $question['options'] = array_map(
+                        fn (array $o) => [
+                            'value' => $o['value'],
+                            'label' => $translate($o),
+                        ],
+                        $q['options'],
+                    );
+                }
+
+                return $question;
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'data' => [
+                'version' => $version,
+                'questions' => $questions,
+            ],
+        ]);
+    }
+
     public function site(): SiteResource
     {
         return new SiteResource(SiteSetting::current());

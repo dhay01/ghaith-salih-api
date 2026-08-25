@@ -17,8 +17,11 @@ class PhotoResource extends JsonResource
             'gear' => $this->gear,
             'alt' => $this->alt ?: $this->title,
             'ratio' => $this->ratio,
-            'is_zoomable' => $this->is_zoomable,
-            'dzi_path' => $this->dzi_path,
+            // What the visitor can actually do, not what the dashboard asked for:
+            // a photo flagged for deep zoom whose tiles are still being built is
+            // not yet zoomable, and offering the control would dead-end.
+            'is_zoomable' => $this->hasDeepZoom(),
+            'deep_zoom' => $this->deepZoomSource(),
             'category' => $this->whenLoaded('category', fn () => [
                 'slug' => $this->category?->slug,
                 'name' => $this->category?->name,

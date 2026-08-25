@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Photos\Schemas;
 
+use App\Filament\Forms\Components\LargeFileUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
 use Filament\Forms\Components\Select;
@@ -21,9 +22,19 @@ class PhotoForm
                     ->collection('image')
                     ->image()
                     ->imageEditor()
-                    ->helperText('Leave empty and the site shows a labelled placeholder instead of a broken image.')
+                    ->helperText('For ordinary photos. Leave empty and the site shows a labelled placeholder instead of a broken image.')
                     ->columnSpanFull(),
             ]),
+
+            Section::make('Large original')
+                ->description('For panoramas and gigapixel stitches too big for the field above. The browser sends the file in small pieces, so its size is not limited by the server\'s upload settings.')
+                ->collapsed(fn ($operation) => $operation !== 'edit')
+                ->hiddenOn('create')
+                ->schema([
+                    LargeFileUpload::make('large_original')
+                        ->label('Upload a large original')
+                        ->helperText('Replaces the current image. Deep zoom tiles are rebuilt automatically afterwards.'),
+                ]),
 
             Section::make('Caption')->schema([
                 Translatable::text('title', 'Title'),

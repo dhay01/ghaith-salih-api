@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Reservations\Tables;
 use App\Models\Reservation;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -78,6 +80,17 @@ class ReservationsTable
             ])
             ->recordActions([
                 ViewAction::make(),
+
+                // Seats are derived from live reservations rather than a counter,
+                // so deleting one returns its seats to the workshop immediately —
+                // no reconciliation step, and no drift.
+                DeleteAction::make()
+                    ->modalHeading('Delete this reservation?')
+                    ->modalDescription(fn (Reservation $record) => sprintf(
+                        'This permanently removes %s\'s booking of %d seat(s) and cannot be undone. The seats return to the workshop.',
+                        $record->name ?: 'this applicant',
+                        $record->seats,
+                    )),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -95,6 +108,9 @@ class ReservationsTable
                         ->label('Export CSV')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(fn (Collection $records) => static::exportCsv($records)),
+
+                    DeleteBulkAction::make()
+                        ->modalDescription('Permanently removes the selected reservations. Their seats return to the workshop.'),
                 ]),
             ]);
     }

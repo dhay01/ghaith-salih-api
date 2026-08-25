@@ -2,24 +2,26 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Structure only — the categories and page copy a fresh install needs to render
+ * without blanks. No demo photos, posts or workshops: those are entered through
+ * the dashboard.
+ *
+ * Create the first dashboard user with `php artisan make:filament-user`, then
+ * grant it access with `php artisan admin:grant <email>`.
+ */
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            DefaultCategoriesSeeder::class,
+            PageSeeder::class,
         ]);
     }
 }

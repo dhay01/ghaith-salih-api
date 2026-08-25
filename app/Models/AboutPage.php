@@ -45,6 +45,7 @@ class AboutPage extends Model implements HasMedia
         foreach (['hero_image', 'gear_image'] as $collection) {
             $this->addMediaCollection($collection)
                 ->singleFile()
+                ->useDisk(config('media-library.disk_name', 'public'))
                 ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
         }
     }

@@ -17,8 +17,12 @@ class CreateReservation
      * Answers that map to a real column are lifted out of the JSON blob so the
      * dashboard can filter and export on them; the full set is still stored in
      * `answers` so nothing is lost if the question set changes later.
+     *
+     * `$notifyApplicant` exists for bookings entered by staff, which have usually
+     * been confirmed on the phone already; the internal notification always sends,
+     * because the seat count changed either way.
      */
-    public function handle(Workshop $workshop, array $answers, int $seats, string $locale, ?string $ip, ?string $userAgent): Reservation
+    public function handle(Workshop $workshop, array $answers, int $seats, string $locale, ?string $ip, ?string $userAgent, bool $notifyApplicant = true): Reservation
     {
         $version = config('reservation_questions.current');
         $columns = $this->liftColumns($answers, $version);
@@ -46,7 +50,7 @@ class CreateReservation
 
         $reservation->load('workshop');
 
-        if ($reservation->email) {
+        if ($notifyApplicant && $reservation->email) {
             Mail::to($reservation->email)->queue(new ReservationSubmitted($reservation));
         }
 

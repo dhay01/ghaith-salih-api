@@ -23,6 +23,7 @@ return [
     'v1' => [
         [
             'id' => 'name',
+            'autocomplete' => 'name',
             'type' => 'text',
             'label' => 'Full name',
             'ar' => 'الأسم',
@@ -53,6 +54,7 @@ return [
         ],
         [
             'id' => 'phone',
+            'autocomplete' => 'tel',
             'type' => 'tel',
             'label' => 'Phone number',
             'ar' => 'رقم الهاتف',
@@ -61,6 +63,7 @@ return [
         ],
         [
             'id' => 'email',
+            'autocomplete' => 'email',
             'type' => 'email',
             'label' => 'Email address',
             'ar' => 'البريد الالكتروني',
@@ -80,6 +83,7 @@ return [
         ],
         [
             'id' => 'specialities',
+            'hint' => 'Choose as many as apply.',
             'type' => 'checkbox',
             'label' => 'Which areas do you work in or care about?',
             'ar' => 'ما هي التخصصات التي تعمل/تهتم بها في التصوير؟ (يمكن اختيار أكثر من خيار)',
@@ -133,6 +137,7 @@ return [
         ],
         [
             'id' => 'motivation',
+            'rows' => 4,
             'type' => 'textarea',
             'label' => 'Why do you want to join this workshop?',
             'ar' => 'لماذا تود الدخول لهذه الورشة؟',

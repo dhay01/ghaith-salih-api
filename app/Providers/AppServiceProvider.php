@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Listeners\QueueDeepZoomTiling;
+use App\Models\Photo;
+use App\Observers\PhotoObserver;
+use Illuminate\Support\Facades\Event;
+use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
+
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Photo::observe(PhotoObserver::class);
+        Event::listen(MediaHasBeenAddedEvent::class, QueueDeepZoomTiling::class);
+
         // The reservation endpoint is public and unauthenticated, so it is
         // throttled per IP: generous enough for a genuine applicant who
         // mistypes and retries, tight enough to make scripted spam pointless.

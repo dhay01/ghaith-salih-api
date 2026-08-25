@@ -15,7 +15,13 @@ return [
     |
     */
 
-    'paths' => ['api/*'],
+    /*
+     * `storage/*` is here for deep zoom: OpenSeadragon fetches the .dzi
+     * descriptor over XHR, which is subject to CORS even though the tiles
+     * themselves are plain <img> requests that are not. Without it the viewer
+     * fails with "HTTP 0" when the site and the API are on different origins.
+     */
+    'paths' => ['api/*', 'storage/*'],
 
     'allowed_methods' => ['*'],
 

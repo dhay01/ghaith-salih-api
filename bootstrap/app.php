@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             SetLocaleFromRequest::class,
         ]);
+
+        // The only login in this app is Filament's. Without this, any guarded web
+        // route throws "Route [login] not defined" instead of redirecting.
+        $middleware->redirectGuestsTo(fn () => '/admin/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
