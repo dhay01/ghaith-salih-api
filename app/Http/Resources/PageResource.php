@@ -16,8 +16,10 @@ class PageResource extends JsonResource
             'title' => $this->title,
             'intro' => $this->intro,
             // Keyed by section name so a template can pull `sections.about`
-            // without caring about ordering.
-            'sections' => collect($this->sections ?? [])
+            // without caring about ordering. Cast to an object so a page with no
+            // sections serialises as {} rather than [] — an empty PHP array would
+            // otherwise change the field's JSON type.
+            'sections' => (object) collect($this->sections ?? [])
                 ->keyBy(fn (array $section) => $section['key'] ?? '')
                 ->all(),
         ];

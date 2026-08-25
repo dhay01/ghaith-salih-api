@@ -85,13 +85,7 @@ class PageSeeder extends Seeder
                 'eyebrow' => 'Journal',
                 'title' => "notes from\nthe field",
                 'intro' => 'Behind-the-scenes stories, technique breakdowns, and gear notes from the road — written between shoots.',
-                'sections' => [
-                    [
-                        'key' => 'subscribe',
-                        'heading' => 'New stories, roughly once a month.',
-                        'body' => 'No noise.',
-                    ],
-                ],
+                'sections' => [],
             ],
 
             'courses' => [
