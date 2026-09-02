@@ -1,0 +1,54 @@
+# ${PORT} is substituted at boot by entrypoint: Railway assigns the port and
+# only tells the container about it through the environment.
+daemon off;
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /dev/stderr warn;
+
+events { worker_connections 1024; }
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log /dev/stdout;
+    sendfile on;
+    tcp_nopush on;
+    server_tokens off;
+
+    # Originals run to gigabytes and the dashboard uploads them in chunks.
+    client_max_body_size 512M;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    server {
+        listen ${PORT} default_server;
+        root /var/www/html/public;
+        index index.php;
+
+        # Tiles are immutable once written, and a single deep-zoom view pulls
+        # hundreds of them.
+        location /storage/tiles/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ \.php$ {
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_index index.php;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            # A multi-gigabyte original is minutes of tiling, and the dashboard
+            # holds the request open while it uploads.
+            fastcgi_read_timeout 1800;
+        }
+
+        location ~ /\.(?!well-known) { deny all; }
+    }
+}
