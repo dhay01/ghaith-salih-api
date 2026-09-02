@@ -24,7 +24,14 @@ RUN composer install \
       --prefer-dist --ignore-platform-reqs
 
 # --- Runtime ---------------------------------------------------------------
-FROM php:8.3-fpm-bookworm
+# 8.4 rather than 8.3: composer.json declares "php": "^8.3", but the resolved
+# tree pulls Symfony 8, whose components all require >= 8.4.1. The lock was
+# built against PHP 8.5 locally, so nothing caught the mismatch until here.
+FROM php:8.4-fpm-bookworm
+
+# Composer refuses to run plugins as root without this, which breaks the
+# post-autoload-dump script.
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # The -dev packages are kept rather than purged afterwards. `apt-get
 # --auto-remove` would take the runtime libraries with them (libicu72 arrives as
