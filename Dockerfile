@@ -26,15 +26,17 @@ RUN composer install \
 # --- Runtime ---------------------------------------------------------------
 FROM php:8.3-fpm-bookworm
 
+# The -dev packages are kept rather than purged afterwards. `apt-get
+# --auto-remove` would take the runtime libraries with them (libicu72 arrives as
+# a dependency of libicu-dev, and nothing tells apt that the compiled intl
+# extension links against it), which builds clean and then crashes on boot.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      nginx supervisor libvips-tools \
+      nginx supervisor libvips-tools unzip \
       libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
-      libzip-dev libicu-dev libonig-dev unzip \
+      libzip-dev libicu-dev libonig-dev libsqlite3-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
       gd zip intl exif bcmath opcache pdo_mysql pdo_sqlite pcntl \
-    && apt-get purge -y --auto-remove \
-      libpng-dev libjpeg62-turbo-dev libfreetype6-dev libzip-dev libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
