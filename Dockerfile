@@ -41,7 +41,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       nginx supervisor libvips-tools unzip \
       libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
       libzip-dev libicu-dev libonig-dev libsqlite3-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+      libwebp-dev libavif-dev \
+    && docker-php-ext-configure gd \
+      --with-freetype --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install -j"$(nproc)" \
       gd zip intl exif bcmath opcache pdo_mysql pdo_sqlite pcntl \
     && rm -rf /var/lib/apt/lists/*
