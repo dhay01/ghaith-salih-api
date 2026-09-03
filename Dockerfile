@@ -54,6 +54,19 @@ COPY --from=vendor /build/vendor ./vendor
 COPY . .
 COPY --from=assets /build/public/build ./public/build
 
+# .dockerignore strips these out of the build context (they hold local uploads
+# and logs), which also drops the .gitignore files Laravel ships to keep the
+# directories present. package:discover below boots the framework, and the view
+# compiler refuses to start without its cache path.
+RUN mkdir -p \
+      storage/app/public \
+      storage/app/private \
+      storage/framework/cache/data \
+      storage/framework/sessions \
+      storage/framework/views \
+      storage/logs \
+      bootstrap/cache
+
 # Deferred from the vendor stage, now that artisan and app/ exist.
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
     && php artisan package:discover --ansi \
