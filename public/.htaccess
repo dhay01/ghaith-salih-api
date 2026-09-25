@@ -1,3 +1,9 @@
+# CloudLinux PHP Selector defaults this account to alt-php82. Laravel 13
+# needs 8.4.1+ with pdo_sqlite; EasyApache 8.4 already has that stack.
+<IfModule mime_module>
+    AddHandler application/x-httpd-ea-php84___lsphp .php .php8 .phtml
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
