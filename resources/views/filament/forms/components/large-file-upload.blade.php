@@ -1,6 +1,21 @@
 @php
     $record = $getRecord();
     $existing = $record?->getFirstMedia('image');
+
+    // A preview is only safe once something smaller than the original exists.
+    // For a large upload that is the vips derivative; until tiling has run,
+    // imageUrls() falls back to the original itself, and putting a 378 MB file
+    // in an img tag would download the whole thing into the dashboard.
+    $urls = $record?->imageUrls();
+    $original = $existing?->getFullUrl();
+    $preview = null;
+
+    if ($urls) {
+        $candidate = $urls['preview'] ?? $urls['thumb'] ?? null;
+        $preview = $candidate && $candidate !== $original ? $candidate : null;
+    }
+
+    $awaitingDerivatives = $existing && ! $preview;
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
@@ -27,10 +42,28 @@
             class="space-y-3"
         >
             @if ($existing)
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                    Current original: <span class="font-medium">{{ $existing->file_name }}</span>
-                    ({{ number_format($existing->size / 1048576, 1) }} MB)
-                </p>
+                <div class="space-y-2">
+                    @if ($preview)
+                        <img
+                            src="{{ $preview }}"
+                            alt="{{ $existing->file_name }}"
+                            class="max-h-64 w-auto rounded-lg border border-gray-200 dark:border-gray-700"
+                        />
+                    @elseif ($awaitingDerivatives)
+                        {{-- Deliberately not falling back to the original here: see above. --}}
+                        <div class="flex h-32 items-center justify-center rounded-lg border border-dashed
+                                    border-gray-300 px-4 text-center text-sm text-gray-500
+                                    dark:border-gray-700 dark:text-gray-400">
+                            Web-sized versions are still being generated — the preview appears once
+                            deep zoom has finished processing this original.
+                        </div>
+                    @endif
+
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        Current original: <span class="font-medium">{{ $existing->file_name }}</span>
+                        ({{ number_format($existing->size / 1048576, 1) }} MB)
+                    </p>
+                </div>
             @endif
 
             <input

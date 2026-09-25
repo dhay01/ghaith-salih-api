@@ -47,6 +47,20 @@ class ChunkedUploadController extends Controller
         return response()->json(['received' => (int) $data['index']]);
     }
 
+    /** Bytes as something a person can act on, e.g. "378.6 MB". */
+    protected function humanBytes(int $bytes): string
+    {
+        foreach (['B', 'KB', 'MB', 'GB', 'TB'] as $unit) {
+            if ($bytes < 1024 || $unit === 'TB') {
+                return round($bytes, 1).' '.$unit;
+            }
+
+            $bytes /= 1024;
+        }
+
+        return $bytes.' B';
+    }
+
     public function finish(Request $request): JsonResponse
     {
         $this->authorizeAdmin($request);
@@ -75,24 +89,79 @@ class ChunkedUploadController extends Controller
 
         $assembled = $chunkDir.'/assembled-'.$this->safeFilename($data['filename']);
         $target = $disk->path($assembled);
+        $expected = (int) $data['size'];
+
+        // Assembly needs room for a second copy of the file alongside the pieces
+        // it is built from. Finding that out by running out of disk halfway leaves
+        // a short file and a size mismatch, which says nothing about the cause.
+        $free = @disk_free_space(dirname($target));
+
+        if ($free !== false && $free < $expected * 1.1) {
+            $disk->deleteDirectory($chunkDir);
+
+            return response()->json([
+                'message' => sprintf(
+                    'Not enough disk space to assemble this upload: %s free, and it needs about %s. Free some space and try again.',
+                    $this->humanBytes((int) $free),
+                    $this->humanBytes((int) ($expected * 1.1)),
+                ),
+            ], 507);
+        }
 
         // Streamed together rather than read into memory: the whole point is that
         // this file is too large to hold at once.
         $out = fopen($target, 'wb');
 
+        if ($out === false) {
+            $disk->deleteDirectory($chunkDir);
+
+            return response()->json([
+                'message' => 'The upload could not be written to disk. Check the permissions on storage/app.',
+            ], 500);
+        }
+
+        $written = 0;
+
         foreach ($parts as $part) {
             $in = fopen($disk->path($part), 'rb');
-            stream_copy_to_stream($in, $out);
+
+            if ($in === false) {
+                continue;
+            }
+
+            // A short write here is the disk filling up mid-assembly, which is
+            // worth saying plainly rather than reporting as a mismatched size.
+            $copied = stream_copy_to_stream($in, $out);
             fclose($in);
+
+            if ($copied === false) {
+                fclose($out);
+                $disk->deleteDirectory($chunkDir);
+
+                return response()->json([
+                    'message' => 'Writing the upload failed part way through, which usually means the disk filled up. Free some space and try again.',
+                ], 507);
+            }
+
+            $written += $copied;
         }
 
         fclose($out);
 
-        if (filesize($target) !== (int) $data['size']) {
+        $actual = filesize($target);
+
+        if ($actual !== $expected) {
             $disk->deleteDirectory($chunkDir);
 
             return response()->json([
-                'message' => 'The assembled file did not match the size the browser reported. Please try again.',
+                'message' => sprintf(
+                    'The assembled file is %s but the browser sent %s. %s',
+                    $this->humanBytes((int) $actual),
+                    $this->humanBytes($expected),
+                    $actual < $expected
+                        ? 'It was cut short, which usually means the disk ran out of room.'
+                        : 'Please try again.',
+                ),
             ], 422);
         }
 
