@@ -3,7 +3,8 @@ set -euo pipefail
 
 cd /var/www/html
 
-# Railway assigns the port at run time and only announces it through $PORT.
+# The host assigns the port at run time and announces it through $PORT; 8080 is
+# the fallback when nothing does.
 # Substituted with sed rather than envsubst so nginx's own $uri / $query_string
 # variables survive.
 sed "s/\${PORT}/${PORT:-8080}/g" \
@@ -35,7 +36,7 @@ php artisan storage:link --force
 php artisan migrate --force
 
 # Cached here rather than at build time: every value these bake in comes from
-# Railway's environment, which the build never sees.
+# the run-time environment, which the build never sees.
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

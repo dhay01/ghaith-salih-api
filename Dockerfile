@@ -1,4 +1,4 @@
-# Deliberately a Dockerfile rather than Railway's Nixpacks autodetection: the
+# Deliberately a Dockerfile rather than a host's own buildpack detection: the
 # tiling job shells out to the `vips` CLI, which no PHP buildpack installs, and
 # the same image has to run somewhere else later without being rebuilt.
 

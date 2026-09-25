@@ -1,4 +1,4 @@
-# ${PORT} is substituted at boot by entrypoint: Railway assigns the port and
+# ${PORT} is substituted at boot by entrypoint: the host assigns the port and
 # only tells the container about it through the environment.
 daemon off;
 user www-data;
