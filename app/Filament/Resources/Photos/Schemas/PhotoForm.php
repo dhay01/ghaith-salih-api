@@ -21,6 +21,12 @@ class PhotoForm
                 SpatieMediaLibraryFileUpload::make('image')
                     ->collection('image')
                     ->image()
+                    // Preview the web-sized version, never the file itself. This
+                    // field shares its collection with the large-original uploader,
+                    // so what it is asked to render may be a gigapixel panorama —
+                    // and rendering that here would pull the whole thing into the
+                    // browser every time the page opened.
+                    ->conversion('thumb')
                     ->imageEditor()
                     // This field posts the whole file in one request, so it is
                     // bounded by the server's upload settings. Rejecting an

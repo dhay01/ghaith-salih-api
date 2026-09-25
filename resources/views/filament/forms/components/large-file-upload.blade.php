@@ -221,6 +221,15 @@
                             this.percent = 100;
                             this.done = true;
                             this.message = payload.message;
+
+                            // The form was rendered before this file existed, so its
+                            // image field still holds the empty state it loaded with.
+                            // Both that field and this one write the same media
+                            // collection, so the next save would sync the collection
+                            // back to empty and delete what was just uploaded. A
+                            // reload rehydrates the form against what is now on disk.
+                            this.message = payload.message + ' Reloading…';
+                            setTimeout(() => window.location.reload(), 1200);
                         } catch (e) {
                             this.error = true;
                             this.message = e.message;
