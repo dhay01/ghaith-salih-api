@@ -22,14 +22,23 @@ class PhotoForm
                     ->collection('image')
                     ->image()
                     ->imageEditor()
-                    ->helperText('For ordinary photos. Leave empty and the site shows a labelled placeholder instead of a broken image.')
+                    // This field posts the whole file in one request, so it is
+                    // bounded by the server's upload settings. Rejecting an
+                    // oversized file in the browser gives a clear message; letting
+                    // it through gives a 500 from PHP before Laravel ever runs.
+                    ->maxSize((int) (config('gigapixel.large_file_bytes') / 1024))
+                    ->helperText(
+                        'For ordinary photos, up to '
+                        .round(config('gigapixel.large_file_bytes') / 1048576)
+                        .' MB. Panoramas and gigapixel stitches go in "Large original" below. '
+                        .'Leave empty and the site shows a labelled placeholder instead of a broken image.'
+                    )
                     ->columnSpanFull(),
             ]),
 
             Section::make('Large original')
                 ->description('For panoramas and gigapixel stitches too big for the field above. The browser sends the file in small pieces, so its size is not limited by the server\'s upload settings.')
                 ->collapsed(fn ($operation) => $operation !== 'edit')
-                ->hiddenOn('create')
                 ->schema([
                     LargeFileUpload::make('large_original')
                         ->label('Upload a large original')

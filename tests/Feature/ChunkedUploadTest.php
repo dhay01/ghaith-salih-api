@@ -114,6 +114,53 @@ class ChunkedUploadTest extends TestCase
         $this->assertSame(hash('sha256', $body), hash_file('sha256', $media->getPath()));
     }
 
+    public function test_pieces_arriving_out_of_order_still_reassemble_byte_for_byte(): void
+    {
+        Queue::fake();
+        $photo = $this->photo();
+
+        $body = $this->jpegBytes();
+        $pieces = str_split($body, 4_096);
+
+        // More than ten pieces on purpose: each one is stored under its index
+        // zero-padded, and reassembly sorts those names. Were they not padded,
+        // "10" would sort before "2" and a file of this length would come back
+        // silently scrambled.
+        $this->assertGreaterThan(10, count($pieces), 'need enough pieces for ordering to matter');
+
+        $uploadId = (string) Str::uuid();
+        $order = array_keys($pieces);
+        shuffle($order);
+
+        // The browser uploads several pieces at once, so they land in whatever
+        // order the network delivers them rather than the order they were cut.
+        foreach ($order as $index) {
+            $this->actingAs($this->admin())
+                ->post('/admin/large-upload/chunk', [
+                    'upload_id' => $uploadId,
+                    'index' => $index,
+                    'chunk' => UploadedFile::fake()->createWithContent("part-{$index}", $pieces[$index]),
+                ])
+                ->assertSuccessful();
+        }
+
+        $this->actingAs($this->admin())
+            ->postJson('/admin/large-upload/finish', [
+                'upload_id' => $uploadId,
+                'photo' => $photo->getKey(),
+                'filename' => 'pano.jpg',
+                'chunks' => count($pieces),
+                'size' => strlen($body),
+            ])
+            ->assertSuccessful();
+
+        $media = $photo->fresh()->getFirstMedia('image');
+
+        $this->assertNotNull($media);
+        $this->assertSame(strlen($body), $media->size);
+        $this->assertSame(hash('sha256', $body), hash_file('sha256', $media->getPath()));
+    }
+
     public function test_reassembly_queues_deep_zoom_tiling(): void
     {
         Queue::fake();

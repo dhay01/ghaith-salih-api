@@ -75,30 +75,84 @@
                         const uploadId = crypto.randomUUID();
                         const chunks = Math.ceil(file.size / config.chunkSize);
 
-                        try {
-                            for (let index = 0; index < chunks; index++) {
-                                const start = index * config.chunkSize;
-                                const blob = file.slice(start, start + config.chunkSize);
+                        // Pieces go up several at a time rather than one after another.
+                        // Each one costs a full round trip, so on a slow link a
+                        // strictly sequential upload spends most of its life waiting
+                        // rather than sending, and never lets the connection reach
+                        // full speed. The server addresses every piece by its index,
+                        // so they may arrive in any order.
+                        const CONCURRENCY = Math.min(4, chunks);
+                        const ATTEMPTS = 3;
 
-                                const body = new FormData();
-                                body.append('upload_id', uploadId);
-                                body.append('index', index);
-                                body.append('chunk', blob);
+                        let next = 0;
+                        let completed = 0;
+                        let stopped = false;
 
-                                const response = await fetch(config.chunkUrl, {
-                                    method: 'POST',
-                                    headers: { 'X-CSRF-TOKEN': config.csrf, 'Accept': 'application/json' },
-                                    body,
-                                });
+                        const sendPiece = async (index) => {
+                            const start = index * config.chunkSize;
+                            const blob = file.slice(start, start + config.chunkSize);
 
-                                if (!response.ok) {
-                                    throw new Error(`Piece ${index + 1} of ${chunks} was rejected (${response.status}).`);
+                            for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+                                try {
+                                    const body = new FormData();
+                                    body.append('upload_id', uploadId);
+                                    body.append('index', index);
+                                    body.append('chunk', blob);
+
+                                    const response = await fetch(config.chunkUrl, {
+                                        method: 'POST',
+                                        headers: { 'X-CSRF-TOKEN': config.csrf, 'Accept': 'application/json' },
+                                        body,
+                                    });
+
+                                    if (response.ok) {
+                                        return;
+                                    }
+
+                                    // Too large, unauthorised or invalid will fail the
+                                    // same way however many times it is sent; only a
+                                    // dropped or overloaded request is worth repeating.
+                                    if ([403, 413, 419, 422].includes(response.status)) {
+                                        throw new Error(`Piece ${index + 1} of ${chunks} was rejected (${response.status}).`);
+                                    }
+
+                                    if (attempt === ATTEMPTS) {
+                                        throw new Error(`Piece ${index + 1} of ${chunks} failed after ${ATTEMPTS} attempts (${response.status}).`);
+                                    }
+                                } catch (e) {
+                                    if (attempt === ATTEMPTS) {
+                                        throw e;
+                                    }
                                 }
 
-                                // Held back from 100% until the server confirms assembly.
-                                this.percent = Math.round(((index + 1) / chunks) * 95);
-                                this.message = `Uploading — ${index + 1} of ${chunks} pieces`;
+                                await new Promise((r) => setTimeout(r, 400 * attempt));
                             }
+                        };
+
+                        const worker = async () => {
+                            while (!stopped) {
+                                const index = next++;
+
+                                if (index >= chunks) {
+                                    return;
+                                }
+
+                                try {
+                                    await sendPiece(index);
+                                } catch (e) {
+                                    stopped = true;
+                                    throw e;
+                                }
+
+                                completed++;
+                                // Held back from 100% until the server confirms assembly.
+                                this.percent = Math.round((completed / chunks) * 95);
+                                this.message = `Uploading — ${completed} of ${chunks} pieces`;
+                            }
+                        };
+
+                        try {
+                            await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
                             this.message = 'Assembling…';
 
