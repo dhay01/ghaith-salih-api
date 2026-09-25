@@ -47,6 +47,10 @@ class ReservationForm
                             ))
                             ->searchable()
                             ->preload()
+                            // The one field still required. It is a foreign key to
+                            // the thing being reserved, and the column cannot be
+                            // null: without the check there is no error message,
+                            // there is a ModelNotFoundException on save.
                             ->required()
                             ->disabled($readOnlyOnEdit)
                             // A disabled field is not dehydrated, so on edit the
@@ -60,7 +64,6 @@ class ReservationForm
                         Grid::make(2)->schema([
                             Select::make('status')
                                 ->options(Reservation::STATUSES)
-                                ->required()
                                 ->native(false)
                                 // Set by the seat check on create, not by hand.
                                 ->hiddenOn('create'),
@@ -77,11 +80,9 @@ class ReservationForm
                     ->schema([
                         Grid::make(2)->schema([
                             TextInput::make('name')
-                                ->required()
                                 ->disabled($readOnlyOnEdit),
 
                             TextInput::make('phone')
-                                ->required()
                                 ->disabled($readOnlyOnEdit),
 
                             TextInput::make('email')
@@ -94,13 +95,11 @@ class ReservationForm
 
                             TextInput::make('age')
                                 ->numeric()
-                                ->required()
                                 ->disabled($readOnlyOnEdit),
 
                             Select::make('gender')
                                 ->options(['male' => 'Male', 'female' => 'Female'])
                                 ->native(false)
-                                ->required()
                                 ->disabled($readOnlyOnEdit)
                                 ->visibleOn('create'),
 
@@ -112,7 +111,6 @@ class ReservationForm
                                 ->numeric()
                                 ->minValue(1)
                                 ->default(1)
-                                ->required()
                                 ->disabled($readOnlyOnEdit)
                                 ->helperText(fn (string $operation) => $operation === 'create'
                                     ? 'If the workshop has fewer seats left, the booking is waitlisted instead.'

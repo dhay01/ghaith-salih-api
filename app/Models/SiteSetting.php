@@ -32,6 +32,18 @@ class SiteSetting extends Model implements HasMedia
         return 'author_photo';
     }
 
+    /**
+     * The wordmark shown in the site header, if one has been uploaded.
+     *
+     * Served as the file that was uploaded rather than through a conversion: a
+     * logo is already small, and re-encoding it only costs it sharpness at the
+     * exact size it is displayed.
+     */
+    public function logoUrl(): ?string
+    {
+        return $this->getFirstMedia('logo')?->getFullUrl();
+    }
+
     public static function current(): self
     {
         return static::firstOrCreate([], ['name' => 'ghaith salih']);

@@ -44,8 +44,18 @@ class ManageSiteSettings extends Page
         return $schema
             ->components([
                 Section::make('Identity')->columns(2)->schema([
-                    TextInput::make('name')->required(),
-                    Translatable::text('tagline', 'Tagline'),
+                    SpatieMediaLibraryFileUpload::make('logo')
+                        ->collection('logo')
+                        ->label('Logo')
+                        // PNG only: the header needs a transparent background, and
+                        // a JPEG cannot carry one — it would arrive with a white
+                        // box baked around it on a dark page.
+                        ->acceptedFileTypes(['image/png'])
+                        ->helperText('PNG only, so the background stays transparent. Leave empty to show the name as text instead.')
+                        ->columnSpanFull(),
+
+                    TextInput::make('name'),
+                    Translatable::rich('tagline', 'Tagline')->columnSpanFull(),
                     Translatable::text('studio', 'Studio location'),
                 ]),
 
@@ -78,8 +88,8 @@ class ManageSiteSettings extends Page
                         ->columns(2)
                         ->reorderable()
                         ->schema([
-                            TextInput::make('label')->required(),
-                            TextInput::make('href')->label('URL')->required(),
+                            TextInput::make('label'),
+                            TextInput::make('href')->label('URL'),
                         ]),
                 ]),
             ])

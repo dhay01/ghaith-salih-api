@@ -84,7 +84,6 @@ class PostForm
                         Textarea::make('paragraphs')
                             ->label('Paragraphs (one per line break)')
                             ->rows(6)
-                            ->required()
                             // Stored as an array so the template can render one <p>
                             // per paragraph without parsing markup.
                             ->formatStateUsing(fn ($state) => is_array($state) ? implode("\n\n", $state) : $state)
@@ -97,11 +96,11 @@ class PostForm
 
                 Block::make('heading')
                     ->label('Heading')
-                    ->schema([TextInput::make('text')->required()]),
+                    ->schema([TextInput::make('text')]),
 
                 Block::make('quote')
                     ->label('Pull quote')
-                    ->schema([Textarea::make('text')->rows(3)->required()]),
+                    ->schema([Textarea::make('text')->rows(3)]),
 
                 Block::make('figure')
                     ->label('Figure')

@@ -17,7 +17,6 @@ class CategoryForm
         return $schema->components([
             Section::make()->columns(2)->schema([
                 Select::make('type')
-                    ->required()
                     ->options([
                         Category::TYPE_WORK => 'Gallery filter',
                         Category::TYPE_POST => 'Blog category',
@@ -26,7 +25,6 @@ class CategoryForm
                     ->live(),
 
                 TextInput::make('slug')
-                    ->required()
                     ->helperText('Used in URLs and filters. Avoid changing it once the site is live.'),
 
                 TextInput::make('position')

@@ -49,9 +49,11 @@ class Translatable
         $tabs = [];
 
         foreach (static::locales() as $locale => $meta) {
+            // Nothing here is required. The fallback locale used to be, which is
+            // where the asterisk on every English tab came from — it was set in
+            // one place and showed up on every translatable field in the panel.
             $field = $factory("{$column}_{$locale}")
-                ->label($label)
-                ->required($locale === $fallback);
+                ->label($label);
 
             if (($meta['dir'] ?? 'ltr') === 'rtl') {
                 $field->extraInputAttributes(['dir' => 'rtl']);

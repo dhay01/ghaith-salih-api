@@ -35,7 +35,7 @@ class WorkshopForm
                 ]),
 
                 Tab::make('Schedule & seats')->columns(2)->schema([
-                    DatePicker::make('starts_on')->required(),
+                    DatePicker::make('starts_on'),
                     DatePicker::make('ends_on'),
 
                     TextInput::make('price_minor')
@@ -86,6 +86,6 @@ class WorkshopForm
     {
         return Repeater::make($name)
             ->label($label)
-            ->simple(TextInput::make('value')->required());
+            ->simple(TextInput::make('value'));
     }
 }

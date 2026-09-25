@@ -72,12 +72,12 @@ class ManageAboutPage extends Page
                         Translatable::text('journey_title', 'Section title'),
                         Repeater::make('journey_paragraphs')
                             ->label('Paragraphs')
-                            ->simple(Textarea::make('text')->rows(4)->required()),
+                            ->simple(Textarea::make('text')->rows(4)),
                         Repeater::make('timeline')
                             ->columns(2)
                             ->schema([
-                                TextInput::make('year')->required(),
-                                TextInput::make('what')->label('What happened')->required(),
+                                TextInput::make('year'),
+                                TextInput::make('what')->label('What happened'),
                             ]),
                     ]),
 
@@ -90,9 +90,9 @@ class ManageAboutPage extends Page
                         Repeater::make('approach')
                             ->columns(2)
                             ->schema([
-                                TextInput::make('n')->label('Number')->placeholder('01')->required(),
-                                TextInput::make('title')->required(),
-                                Textarea::make('body')->rows(3)->required()->columnSpanFull(),
+                                TextInput::make('n')->label('Number')->placeholder('01'),
+                                TextInput::make('title'),
+                                Textarea::make('body')->rows(3)->columnSpanFull(),
                             ]),
                     ]),
 
@@ -101,8 +101,8 @@ class ManageAboutPage extends Page
                         Repeater::make('gear')
                             ->columns(2)
                             ->schema([
-                                TextInput::make('label')->required(),
-                                TextInput::make('value')->required(),
+                                TextInput::make('label'),
+                                TextInput::make('value'),
                             ]),
                         SpatieMediaLibraryFileUpload::make('gear_image')
                             ->collection('gear_image')

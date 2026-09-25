@@ -64,7 +64,6 @@ class PhotoForm
                     ->preload(),
 
                 TextInput::make('ratio')
-                    ->required()
                     ->default('3/2')
                     ->helperText('Aspect ratio, e.g. 16/10. Reserves the gallery cell before the image loads.'),
 

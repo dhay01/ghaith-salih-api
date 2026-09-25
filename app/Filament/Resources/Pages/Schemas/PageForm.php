@@ -16,7 +16,6 @@ class PageForm
         return $schema->components([
             Section::make('Page')->schema([
                 TextInput::make('key')
-                    ->required()
                     ->disabledOn('edit')
                     ->helperText('Matches a route in the site. Fixed once created.'),
             ]),
@@ -35,7 +34,7 @@ class PageForm
                         ->collapsible()
                         ->itemLabel(fn (array $state): ?string => $state['key'] ?? null)
                         ->schema([
-                            TextInput::make('key')->required(),
+                            TextInput::make('key'),
                             TextInput::make('eyebrow'),
                             Textarea::make('heading')
                                 ->rows(2)
