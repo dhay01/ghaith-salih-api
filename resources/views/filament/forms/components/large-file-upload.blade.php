@@ -5,8 +5,15 @@
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
     @if (! $record)
+        {{-- On create there is no record for the pieces to be addressed to yet.
+             Saying so is not enough on its own: say what to do and where it
+             leads, or this reads as a field that is simply broken. --}}
         <p class="text-sm text-gray-500 dark:text-gray-400">
-            Save the photo first, then upload its original here.
+            <span class="font-medium text-gray-700 dark:text-gray-200">
+                Fill in the details below and press Create.
+            </span>
+            You will land on this photo's edit page, where this becomes a file
+            picker that can take an original of any size.
         </p>
     @else
         <div
