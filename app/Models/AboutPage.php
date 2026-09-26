@@ -67,8 +67,17 @@ class AboutPage extends Model implements HasMedia
             return null;
         }
 
+        if (static::isOversizedUpload($media)) {
+            return [
+                'preview' => null,
+                'original' => $media->getFullUrl(),
+            ];
+        }
+
         return [
-            'preview' => $media->getFullUrl('preview'),
+            'preview' => $media->hasGeneratedConversion('preview')
+                ? $media->getFullUrl('preview')
+                : null,
             'original' => $media->getFullUrl(),
         ];
     }

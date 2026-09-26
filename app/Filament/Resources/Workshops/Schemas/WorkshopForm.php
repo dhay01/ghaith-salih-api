@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Workshops\Schemas;
 
+use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -21,9 +21,8 @@ class WorkshopForm
         return $schema->components([
             Tabs::make('Workshop')->columnSpanFull()->tabs([
                 Tab::make('Details')->schema([
-                    SpatieMediaLibraryFileUpload::make('image')
+                    CoverImageUpload::make('image')
                         ->collection('image')
-                        ->image()
                         ->label('Cover image'),
 
                     Translatable::text('title', 'Title'),

@@ -12,6 +12,26 @@ class OversizedPhotoUrlsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_ordinary_photos_advertise_conversions_not_the_original(): void
+    {
+        $photo = Photo::create([
+            'slug' => 'web-size-check',
+            'title' => ['en' => 'Web size check'],
+            'ratio' => '3/2',
+            'is_published' => true,
+        ]);
+
+        $photo->addMedia($this->jpeg())->preservingOriginal()->toMediaCollection('image');
+        $photo = $photo->fresh();
+        $urls = $photo->imageUrls();
+        $original = $photo->getFirstMedia('image')->getFullUrl();
+
+        $this->assertNotSame($original, $urls['thumb']);
+        $this->assertNotSame($original, $urls['preview']);
+        $this->assertNotSame($original, $urls['full']);
+        $this->assertStringContainsString('.webp', $urls['thumb']);
+    }
+
     public function test_oversized_photos_do_not_advertise_the_original_as_a_web_size(): void
     {
         $photo = $this->oversizedPhoto();

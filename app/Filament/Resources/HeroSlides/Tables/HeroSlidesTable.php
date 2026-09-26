@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\HeroSlides\Tables;
 
+use App\Filament\Tables\Columns\WebImageColumn;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -18,7 +18,7 @@ class HeroSlidesTable
             ->defaultSort('position')
             ->reorderable('position')
             ->columns([
-                SpatieMediaLibraryImageColumn::make('image')->collection('image')->conversion('thumb')->label(''),
+                WebImageColumn::thumb(),
                 TextColumn::make('alt')->label('Alt text'),
                 TextColumn::make('position')->sortable(),
                 IconColumn::make('is_published')->label('Live')->boolean(),

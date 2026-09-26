@@ -2,12 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use App\Models\AboutPage;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -62,9 +62,9 @@ class ManageAboutPage extends Page
                         Translatable::textarea('hero_intro', 'Intro', 3),
                         TagsInput::make('disciplines')
                             ->helperText('The chips under the intro, e.g. Landscape, Panorama, Gigapixel.'),
-                        SpatieMediaLibraryFileUpload::make('hero_image')
+                        CoverImageUpload::make('hero_image')
                             ->collection('hero_image')
-                            ->image()
+                            ->conversion('preview')
                             ->label('Hero image'),
                     ]),
 
@@ -104,9 +104,9 @@ class ManageAboutPage extends Page
                                 TextInput::make('label'),
                                 TextInput::make('value'),
                             ]),
-                        SpatieMediaLibraryFileUpload::make('gear_image')
+                        CoverImageUpload::make('gear_image')
                             ->collection('gear_image')
-                            ->image()
+                            ->conversion('preview')
                             ->label('Gear image'),
                     ]),
                 ]),

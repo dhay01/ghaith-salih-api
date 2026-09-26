@@ -2,12 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use App\Models\SiteSetting;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -44,8 +44,10 @@ class ManageSiteSettings extends Page
         return $schema
             ->components([
                 Section::make('Identity')->columns(2)->schema([
-                    SpatieMediaLibraryFileUpload::make('logo')
+                    CoverImageUpload::make('logo')
                         ->collection('logo')
+                        ->conversion('logo')
+                        ->maxSize(2048)
                         ->label('Logo')
                         // PNG only: the header needs a transparent background, and
                         // a JPEG cannot carry one — it would arrive with a white
@@ -75,9 +77,8 @@ class ManageSiteSettings extends Page
                         TextInput::make('author_follow')->label('Follow URL'),
                         Translatable::text('author_location', 'Location'),
                         Translatable::textarea('author_bio', 'Bio', 2),
-                        SpatieMediaLibraryFileUpload::make('author_photo')
+                        CoverImageUpload::make('author_photo')
                             ->collection('author_photo')
-                            ->image()
                             ->label('Portrait')
                             ->columnSpanFull(),
                     ]),

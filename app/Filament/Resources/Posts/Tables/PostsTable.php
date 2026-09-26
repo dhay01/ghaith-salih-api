@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\Posts\Tables;
 
+use App\Filament\Tables\Columns\WebImageColumn;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -19,7 +19,7 @@ class PostsTable
         return $table
             ->defaultSort('published_on', 'desc')
             ->columns([
-                SpatieMediaLibraryImageColumn::make('image')->collection('image')->conversion('thumb')->label(''),
+                WebImageColumn::thumb(),
                 TextColumn::make('title')->searchable()->wrap()->limit(60),
                 TextColumn::make('category.slug')->label('Category')->badge(),
                 TextColumn::make('published_on')->date('M Y')->sortable(),

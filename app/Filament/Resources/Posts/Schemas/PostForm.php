@@ -2,13 +2,13 @@
 
 namespace App\Filament\Resources\Posts\Schemas;
 
+use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -33,9 +33,8 @@ class PostForm
                 ]),
 
                 Tab::make('Meta')->columns(2)->schema([
-                    SpatieMediaLibraryFileUpload::make('image')
+                    CoverImageUpload::make('image')
                         ->collection('image')
-                        ->image()
                         ->label('Cover image')
                         ->columnSpanFull(),
 
@@ -108,6 +107,10 @@ class PostForm
                         FileUpload::make('path')
                             ->label('Image')
                             ->image()
+                            ->maxSize((int) (config('gigapixel.large_file_bytes') / 1024))
+                            ->imageResizeMode('max')
+                            ->imageResizeTargetWidth(2600)
+                            ->imageResizeTargetHeight(2600)
                             ->disk(config('media-library.disk_name'))
                             ->directory('posts'),
                         TextInput::make('ratio')->placeholder('3 / 2'),

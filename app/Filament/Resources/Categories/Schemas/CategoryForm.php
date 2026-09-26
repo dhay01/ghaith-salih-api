@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -52,9 +52,8 @@ class CategoryForm
                         ->label('Grid ratio')
                         ->placeholder('16/11'),
 
-                    SpatieMediaLibraryFileUpload::make('image')
+                    CoverImageUpload::make('image')
                         ->collection('image')
-                        ->image()
                         ->label('Showcase image')
                         ->columnSpanFull(),
                 ]),

@@ -73,9 +73,12 @@ class SiteSetting extends Model implements HasMedia
             return null;
         }
 
-        return $media->hasGeneratedConversion('logo')
-            ? $media->getFullUrl('logo')
-            : $media->getFullUrl();
+        if ($media->hasGeneratedConversion('logo')) {
+            return $media->getFullUrl('logo');
+        }
+
+        // Tiny PNG only. A huge upload must not land in the header.
+        return $media->size <= 512 * 1024 ? $media->getFullUrl() : null;
     }
 
     public static function current(): self

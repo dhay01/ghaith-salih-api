@@ -76,6 +76,13 @@ trait HasCoverImage
         return $media->size > (int) config('gigapixel.large_file_bytes');
     }
 
+    protected function generatedConversionUrl(Media $media, string $conversion): ?string
+    {
+        return $media->hasGeneratedConversion($conversion)
+            ? $media->getFullUrl($conversion)
+            : null;
+    }
+
     /**
      * Overridden by models that can generate their own derivatives with vips.
      *
@@ -113,9 +120,9 @@ trait HasCoverImage
         }
 
         return [
-            'thumb' => $media->getFullUrl('thumb'),
-            'preview' => $media->getFullUrl('preview'),
-            'full' => $media->getFullUrl('full'),
+            'thumb' => $this->generatedConversionUrl($media, 'thumb'),
+            'preview' => $this->generatedConversionUrl($media, 'preview'),
+            'full' => $this->generatedConversionUrl($media, 'full'),
             'original' => $media->getFullUrl(),
         ];
     }
