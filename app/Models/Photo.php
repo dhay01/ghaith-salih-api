@@ -113,10 +113,6 @@ class Photo extends Model implements HasMedia
      */
     protected function generatedDerivativeUrls(): ?array
     {
-        if ($this->dzi_status !== self::TILING_READY) {
-            return null;
-        }
-
         $disk = Storage::disk(config('gigapixel.disk'));
         $base = $this->derivativeBase();
         $urls = [];

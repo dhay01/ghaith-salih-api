@@ -9,7 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\SpatieMediaLibraryImageColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -31,10 +31,11 @@ class PhotosTable
             ->defaultSort('position')
             ->reorderable('position')
             ->columns([
-                SpatieMediaLibraryImageColumn::make('image')
-                    ->collection('image')
-                    ->conversion('thumb')
-                    ->label(''),
+                ImageColumn::make('image')
+                    ->label('')
+                    ->getStateUsing(fn (Photo $record) => $record->imageUrls()['thumb'] ?? null)
+                    ->height(64)
+                    ->checkFileExistence(false),
 
                 TextColumn::make('title')->searchable()->sortable(),
                 TextColumn::make('category.slug')->label('Category')->badge()->sortable(),

@@ -3,9 +3,9 @@
     $existing = $record?->getFirstMedia('image');
 
     // A preview is only safe once something smaller than the original exists.
-    // For a large upload that is the vips derivative; until tiling has run,
-    // imageUrls() falls back to the original itself, and putting a 378 MB file
-    // in an img tag would download the whole thing into the dashboard.
+    // For a large upload that is the vips derivative. imageUrls() leaves
+    // thumb/preview null until those files exist, so this never points at the
+    // original.
     $urls = $record?->imageUrls();
     $original = $existing?->getFullUrl();
     $preview = null;

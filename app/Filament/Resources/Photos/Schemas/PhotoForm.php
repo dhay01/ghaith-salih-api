@@ -5,12 +5,15 @@ namespace App\Filament\Resources\Photos\Schemas;
 use App\Filament\Forms\Components\LargeFileUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
+use App\Models\Photo;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
+use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class PhotoForm
 {
@@ -28,6 +31,32 @@ class PhotoForm
                     // browser every time the page opened.
                     ->conversion('thumb')
                     ->imageEditor()
+                    ->getUploadedFileUsing(function (SpatieMediaLibraryFileUpload $component, string $file): ?array {
+                        $record = $component->getRecord();
+                        /** @var ?Media $media */
+                        $media = $record?->getRelationValue('media')->firstWhere('uuid', $file);
+
+                        if (! $media) {
+                            return null;
+                        }
+
+                        $url = null;
+
+                        if ($record instanceof Photo && Photo::isOversizedUpload($media)) {
+                            $url = $record->imageUrls()['thumb'] ?? null;
+                        } elseif ($component->getConversion() && $media->hasGeneratedConversion($component->getConversion())) {
+                            $url = $media->getUrl($component->getConversion());
+                        } else {
+                            $url = $media->getUrl();
+                        }
+
+                        return [
+                            'name' => $media->getAttributeValue('name') ?? $media->getAttributeValue('file_name'),
+                            'size' => $media->getAttributeValue('size'),
+                            'type' => $media->getAttributeValue('mime_type'),
+                            'url' => $url ? Str::sanitizeUrl($url) : null,
+                        ];
+                    })
                     // This field posts the whole file in one request, so it is
                     // bounded by the server's upload settings. Rejecting an
                     // oversized file in the browser gives a clear message; letting

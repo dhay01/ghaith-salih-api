@@ -4,6 +4,7 @@ After=network.target redis-server.service
 Requires=redis-server.service
 
 [Service]
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
 User=www-data
 Group=www-data
 Restart=always

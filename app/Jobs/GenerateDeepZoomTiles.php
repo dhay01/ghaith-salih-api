@@ -85,6 +85,12 @@ class GenerateDeepZoomTiles implements ShouldQueue
             // lightbox need, and they are quick. Tiling can take minutes.
             if (Photo::isOversizedUpload($media)) {
                 $this->generateDerivatives($source, $absoluteBase, $photo);
+
+                // Web-sized files first, so the admin and gallery can preview
+                // while dzsave is still chewing on the original.
+                if ($scratch) {
+                    $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
+                }
             }
 
             if ($photo->is_zoomable) {

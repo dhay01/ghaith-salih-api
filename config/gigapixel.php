@@ -7,7 +7,7 @@ return [
     | silicon; most Linux servers put it in /usr/bin after `apt install
     | libvips-tools`. Override with VIPS_BINARY if it lives somewhere else.
     */
-    'binary' => env('VIPS_BINARY', 'vips'),
+    'binary' => env('VIPS_BINARY', '/usr/bin/vips'),
 
     /*
     | 512 rather than the 256 the Deep Zoom spec suggests: it produces roughly a

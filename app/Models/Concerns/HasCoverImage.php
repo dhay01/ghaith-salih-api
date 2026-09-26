@@ -100,16 +100,16 @@ trait HasCoverImage
             return null;
         }
 
-        // A large upload has no GD conversions; whoever generated its vips
-        // derivatives supplies them instead. Falling back to the original keeps
-        // the image visible either way, just heavier.
+        // A large upload has no GD conversions; vips writes the web-sized
+        // versions. Never advertise the original as thumb/preview/full — a
+        // 378 MB panorama in an <img> stalls the admin and the gallery.
         if (static::isOversizedUpload($media)) {
-            $generated = $this->generatedDerivativeUrls();
-
-            return $generated ?? array_fill_keys(
-                ['thumb', 'preview', 'full', 'original'],
-                $media->getFullUrl(),
-            );
+            return $this->generatedDerivativeUrls() ?? [
+                'thumb' => null,
+                'preview' => null,
+                'full' => null,
+                'original' => $media->getFullUrl(),
+            ];
         }
 
         return [
