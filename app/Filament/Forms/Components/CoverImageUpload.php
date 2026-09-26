@@ -20,6 +20,7 @@ class CoverImageUpload extends SpatieMediaLibraryFileUpload
 
         $this->image();
         $this->conversion('thumb');
+        $this->disk(config('media-library.disk_name', 'public'));
         $this->maxSize((int) (config('gigapixel.large_file_bytes') / 1024));
 
         $this->getUploadedFileUsing(function (CoverImageUpload $component, string $file): ?array {

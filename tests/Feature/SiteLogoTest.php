@@ -120,4 +120,30 @@ class SiteLogoTest extends TestCase
 
         $this->getJson('/api/site')->assertSuccessful()->assertJsonPath('data.logo', null);
     }
+
+    public function test_the_api_hides_a_logo_whose_file_is_missing(): void
+    {
+        $site = $this->withLogo();
+        $media = $site->getFirstMedia('logo');
+
+        foreach (['', 'logo'] as $conversion) {
+            $path = $media->getPath($conversion);
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+
+        $this->assertNull($site->fresh()->logoUrl());
+        $this->getJson('/api/site')->assertSuccessful()->assertJsonPath('data.logo', null);
+    }
+
+    public function test_the_logo_collection_uses_the_media_disk(): void
+    {
+        $collection = SiteSetting::current()
+            ->getRegisteredMediaCollections()
+            ->firstWhere('name', 'logo');
+
+        $this->assertNotNull($collection);
+        $this->assertSame(config('media-library.disk_name'), $collection->diskName);
+    }
 }

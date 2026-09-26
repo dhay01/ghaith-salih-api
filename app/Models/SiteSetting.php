@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasCoverImage;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -43,6 +44,9 @@ class SiteSetting extends Model implements HasMedia
      * Without singleFile() a second upload is added rather than replacing the
      * first, and getFirstMedia() keeps returning the original — so replacing a
      * logo appears to do nothing, and a broken one cannot be replaced at all.
+     *
+     * useDisk() is required: Filament otherwise falls back to FILESYSTEM_DISK
+     * (local/private), Spatie still prints /storage/..., and nginx 404s.
      */
     public function registerMediaCollections(): void
     {
@@ -92,11 +96,25 @@ class SiteSetting extends Model implements HasMedia
         }
 
         if ($media->hasGeneratedConversion('logo')) {
-            return $media->getFullUrl('logo');
+            $url = $this->existingMediaUrl($media, 'logo');
+
+            if ($url) {
+                return $url;
+            }
         }
 
         // Tiny PNG only. A huge upload must not land in the header.
-        return $media->size <= 512 * 1024 ? $media->getFullUrl() : null;
+        return $media->size <= 512 * 1024 ? $this->existingMediaUrl($media) : null;
+    }
+
+    protected function existingMediaUrl(Media $media, ?string $conversion = null): ?string
+    {
+        $disk = $conversion ? $media->conversions_disk : $media->disk;
+        $path = $media->getPathRelativeToRoot($conversion ?? '');
+
+        return Storage::disk($disk)->exists($path)
+            ? $media->getFullUrl($conversion ?? '')
+            : null;
     }
 
     public static function current(): self
