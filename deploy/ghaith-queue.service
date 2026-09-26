@@ -1,6 +1,7 @@
 [Unit]
 Description=ghaith-salih-api queue worker (vips dzsave)
-After=network.target
+After=network.target redis-server.service
+Requires=redis-server.service
 
 [Service]
 User=www-data
@@ -8,7 +9,7 @@ Group=www-data
 Restart=always
 RestartSec=3
 WorkingDirectory=/var/www/ghaith-salih-api
-ExecStart=/usr/bin/php /var/www/ghaith-salih-api/artisan queue:work database --sleep=1 --tries=1 --timeout=1800 --max-time=3600
+ExecStart=/usr/bin/php /var/www/ghaith-salih-api/artisan queue:work redis --sleep=1 --tries=1 --timeout=1800 --max-time=3600
 Nice=10
 
 [Install]

@@ -15,8 +15,6 @@ export COMPOSER_MEMORY_LIMIT=-1
 
 php artisan migrate --force
 php artisan storage:link --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan optimize
 php artisan queue:restart
 sudo systemctl reload php8.5-fpm
