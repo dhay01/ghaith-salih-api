@@ -37,7 +37,10 @@ class OversizedOriginalTest extends TestCase
         imagedestroy($image);
 
         $photo = Photo::create([
-            'slug' => 'oversized',
+            // Unique per run: derivative paths are built from the slug, and the
+            // readiness check is now pure file existence — a tile left behind by
+            // an earlier run would otherwise look like a finished job.
+            'slug' => 'oversized-'.bin2hex(random_bytes(4)),
             'title' => ['en' => 'Oversized'],
             'ratio' => '3/2',
             'is_published' => true,
