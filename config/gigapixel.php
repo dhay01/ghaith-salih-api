@@ -48,6 +48,11 @@ return [
     'derivatives' => [
         'thumb' => 600,
         'preview' => 1400,
-        'full' => 2600,
+        // The work page opens on a full-bleed frame, so this is asked to fill the
+        // whole viewport. At 2600 it was upscaled on any wide screen at two times
+        // density, which is exactly where a landscape photograph is looked at
+        // hardest. Decoding cost is set by the original, not by this, so the
+        // larger output is close to free.
+        'full' => 3600,
     ],
 ];

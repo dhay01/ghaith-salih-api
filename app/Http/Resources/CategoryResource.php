@@ -18,7 +18,7 @@ class CategoryResource extends JsonResource
             'grid_ratio' => $this->grid_ratio,
             // Only present when the caller asked for counts.
             'photos_count' => $this->whenCounted('photos'),
-            'images' => $this->imageUrls(),
+            'images' => $this->tileImageUrls(),
         ];
     }
 }

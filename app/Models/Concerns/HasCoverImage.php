@@ -61,7 +61,7 @@ trait HasCoverImage
             ->nonQueued();
 
         $this->addMediaConversion('full')
-            ->fit(Fit::Max, 2600, 2600)
+            ->fit(Fit::Max, 3600, 3600)
             ->format('webp')
             ->nonQueued();
     }
