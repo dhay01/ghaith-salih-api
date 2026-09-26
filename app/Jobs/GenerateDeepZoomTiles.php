@@ -3,12 +3,17 @@
 namespace App\Jobs;
 
 use App\Models\Photo;
+use FilesystemIterator;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use RuntimeException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -50,10 +55,10 @@ class GenerateDeepZoomTiles implements ShouldQueue
             return;
         }
 
-        $source = $media->getPath();
-
-        if (! is_file($source)) {
-            $photo->markTilingFailed('The uploaded file could not be found on disk.');
+        try {
+            [$source, $deleteSource] = $this->materializeSource($media);
+        } catch (Throwable $e) {
+            $photo->markTilingFailed($e->getMessage());
 
             return;
         }
@@ -67,12 +72,13 @@ class GenerateDeepZoomTiles implements ShouldQueue
         $disk = Storage::disk(config('gigapixel.disk'));
         $relativeBase = trim((string) config('gigapixel.directory'), '/').'/'.$photo->slug;
 
-        $disk->makeDirectory(dirname($relativeBase));
         $this->removeExistingTiles($disk, $relativeBase);
 
         // vips appends ".dzi" and "_files/" itself, so it is handed a base path
-        // with no extension.
-        $absoluteBase = $disk->path($relativeBase);
+        // with no extension. Object storage has no local path: write a scratch
+        // tree, then upload.
+        [$absoluteBase, $scratch] = $this->vipsOutputBase($disk, $relativeBase);
+        $dziMeta = null;
 
         try {
             // Web-sized versions first: they are what the gallery grid and
@@ -84,6 +90,14 @@ class GenerateDeepZoomTiles implements ShouldQueue
             if ($photo->is_zoomable) {
                 $this->runVips($source, $absoluteBase, $photo);
             }
+
+            $dziMeta = $photo->is_zoomable
+                ? $this->readDziMeta($absoluteBase.'.dzi')
+                : null;
+
+            if ($scratch) {
+                $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
+            }
         } catch (ProcessTimedOutException) {
             $photo->markTilingFailed('Tiling exceeded the '.config('gigapixel.timeout').'s limit.');
 
@@ -93,6 +107,14 @@ class GenerateDeepZoomTiles implements ShouldQueue
             $photo->markTilingFailed($e->getMessage());
 
             return;
+        } finally {
+            if ($deleteSource && is_file($source)) {
+                @unlink($source);
+            }
+
+            if ($scratch) {
+                File::deleteDirectory($scratch);
+            }
         }
 
         if ($photo->is_zoomable && ! $disk->exists($relativeBase.'.dzi')) {
@@ -103,15 +125,126 @@ class GenerateDeepZoomTiles implements ShouldQueue
 
         $photo->forceFill([
             'dzi_path' => $photo->is_zoomable ? $relativeBase.'.dzi' : null,
-            'dzi_meta' => $photo->is_zoomable
-                ? $this->readDziMeta($disk->path($relativeBase.'.dzi'))
-                : null,
+            'dzi_meta' => $dziMeta,
             'dzi_status' => Photo::TILING_READY,
             'dzi_media_id' => $media->getKey(),
             'dzi_error' => null,
             'dzi_progress' => 100,
             'dzi_generated_at' => now(),
         ])->save();
+    }
+
+    /**
+     * vips needs a real file. Spatie getPath() is that file on a local disk;
+     * on R2 it is an object key, so the original is streamed to a temp file.
+     *
+     * @return array{0: string, 1: bool}
+     */
+    protected function materializeSource(Media $media): array
+    {
+        $path = $media->getPath();
+
+        if (is_string($path) && is_file($path)) {
+            return [$path, false];
+        }
+
+        $stream = Storage::disk($media->disk)->readStream($media->getPathRelativeToRoot());
+
+        if ($stream === false || $stream === null) {
+            throw new RuntimeException('The uploaded file could not be found on disk.');
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'vips-src-');
+        $out = fopen($tmp, 'wb');
+
+        if ($out === false) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+
+            throw new RuntimeException('Could not create a local copy of the upload for vips.');
+        }
+
+        stream_copy_to_stream($stream, $out);
+        fclose($out);
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+
+        return [$tmp, true];
+    }
+
+    /**
+     * @return array{0: string, 1: ?string} Absolute vips base path, and scratch dir to delete.
+     */
+    protected function vipsOutputBase(Filesystem $disk, string $relativeBase): array
+    {
+        if ($this->diskIsLocal($disk)) {
+            $disk->makeDirectory(dirname($relativeBase));
+
+            return [$disk->path($relativeBase), null];
+        }
+
+        $scratch = storage_path('app/vips-scratch/'.basename($relativeBase).'-'.bin2hex(random_bytes(4)));
+        File::ensureDirectoryExists($scratch);
+
+        return [$scratch.'/'.basename($relativeBase), $scratch];
+    }
+
+    protected function diskIsLocal(Filesystem $disk): bool
+    {
+        try {
+            $probe = $disk->path('__local_probe__');
+        } catch (Throwable) {
+            return false;
+        }
+
+        return is_string($probe) && str_starts_with($probe, DIRECTORY_SEPARATOR);
+    }
+
+    /** Uploads a vips scratch tree onto a remote disk, preserving relative paths. */
+    public function syncLocalTree(string $localDir, Filesystem $disk, string $prefix): void
+    {
+        $localDir = rtrim($localDir, DIRECTORY_SEPARATOR);
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($localDir, FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile()) {
+                continue;
+            }
+
+            $relative = ltrim(str_replace($localDir, '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            $key = trim($prefix.'/'.str_replace(DIRECTORY_SEPARATOR, '/', $relative), '/');
+            $stream = fopen($file->getPathname(), 'rb');
+
+            if ($stream === false) {
+                throw new RuntimeException('Could not read '.$file->getPathname().' for upload.');
+            }
+
+            $disk->put($key, $stream, [
+                'visibility' => 'private',
+                'CacheControl' => 'public, max-age=31536000, immutable',
+                'ContentType' => $this->contentTypeFor($file->getExtension()),
+            ]);
+
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+    }
+
+    protected function contentTypeFor(string $extension): string
+    {
+        return match (strtolower($extension)) {
+            'dzi', 'xml' => 'application/xml',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'png' => 'image/png',
+            'tif', 'tiff' => 'image/tiff',
+            default => 'application/octet-stream',
+        };
     }
 
     /**

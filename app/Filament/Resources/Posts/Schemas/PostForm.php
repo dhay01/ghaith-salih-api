@@ -108,7 +108,7 @@ class PostForm
                         FileUpload::make('path')
                             ->label('Image')
                             ->image()
-                            ->disk('public')
+                            ->disk(config('media-library.disk_name'))
                             ->directory('posts'),
                         TextInput::make('ratio')->placeholder('3 / 2'),
                         TextInput::make('caption'),

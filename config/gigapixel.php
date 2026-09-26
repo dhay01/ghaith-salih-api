@@ -19,9 +19,9 @@ return [
     'quality' => (int) env('GIGAPIXEL_QUALITY', 85),
 
     /*
-    | Where tile pyramids are written. The `public` disk keeps them on the
-    | server's own filesystem; pointing this at an S3-compatible disk later is a
-    | configuration change rather than a code change.
+    | Where finished tiles and vips derivatives are stored. vips itself always
+    | writes a local path; the job uploads that tree when this disk has no
+    | filesystem path (R2 / S3).
     */
     'disk' => env('GIGAPIXEL_DISK', 'public'),
 

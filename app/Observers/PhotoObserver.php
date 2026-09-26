@@ -30,5 +30,9 @@ class PhotoObserver
 
         $disk->delete($photo->dzi_path);
         $disk->deleteDirectory($base.'_files');
+
+        foreach (array_keys((array) config('gigapixel.derivatives')) as $name) {
+            $disk->delete($base.'-'.$name.'.webp');
+        }
     }
 }

@@ -40,7 +40,7 @@ class PostResource extends JsonResource
         return collect($this->body ?? [])
             ->map(function (array $block): array {
                 if (($block['type'] ?? null) === 'figure' && ! empty($block['path'])) {
-                    $block['src'] = Storage::disk('public')->url($block['path']);
+                    $block['src'] = Storage::disk(config('media-library.disk_name'))->url($block['path']);
                 }
 
                 return $block;
