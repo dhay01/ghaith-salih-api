@@ -31,7 +31,9 @@ return [
         array_map('trim', explode(',', (string) env('FRONTEND_ORIGINS', 'http://localhost:5173,http://localhost:5174')))
     ),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9-]+\\.ghaith-art\\.pages\\.dev$#',
+    ],
 
     'allowed_headers' => ['*'],
 

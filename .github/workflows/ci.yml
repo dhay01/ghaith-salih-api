@@ -44,7 +44,7 @@ jobs:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Trust host
-        run: mkdir -p ~/.ssh && ssh-keyscan -H 5.75.207.198 >> ~/.ssh/known_hosts
+        run: mkdir -p ~/.ssh && ssh-keyscan -H 91.107.255.35 >> ~/.ssh/known_hosts
 
       - name: Deploy
-        run: ssh ghaith@5.75.207.198 'bash /home/ghaith/ghaith-salih-api/scripts/deploy.sh'
+        run: ssh deploy@91.107.255.35 'bash /var/www/ghaith-salih-api/scripts/deploy.sh'
