@@ -127,8 +127,8 @@ def main() -> int:
             },
         },
         {
-            "description": "Cache R2 image host",
-            "expression": f'(http.host eq "{DOMAIN}")',
+            "description": "Cache hashed Pages assets",
+            "expression": '(http.host in {"ghaith-art.com" "www.ghaith-art.com"} and starts_with(http.request.uri.path, "/assets/"))',
             "action": "set_cache_settings",
             "action_parameters": {
                 "cache": True,
