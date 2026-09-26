@@ -89,8 +89,10 @@ EOF
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
+while read -r cidr; do
+  [ -n "$cidr" ] || continue
+  ufw allow proto tcp from "$cidr" to any port 80,443 comment 'Cloudflare'
+done < <(curl -fsSL https://www.cloudflare.com/ips-v4; curl -fsSL https://www.cloudflare.com/ips-v6)
 ufw --force enable
 
 # --- dirs ---
