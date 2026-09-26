@@ -50,8 +50,8 @@ class SiteLogoTest extends TestCase
 
         [$width, $height] = getimagesize($media->getPath('logo'));
 
-        $this->assertLessThanOrEqual(900, $width);
-        $this->assertLessThanOrEqual(180, $height);
+        $this->assertLessThanOrEqual(1200, $width);
+        $this->assertLessThanOrEqual(260, $height);
         // 1200x400 bounded by height, so the width comes down in proportion.
         $this->assertSame(round(1200 / 400, 2), round($width / $height, 2));
     }

@@ -59,14 +59,14 @@ class SiteSetting extends Model implements HasMedia
      *
      * Left to the inherited conversions it would be re-encoded at 600, 1400 and
      * 2600px, none of which it is ever displayed at. One conversion bounded by
-     * height covers both the header and the footer at up to three times their
+     * height covers both the header and the footer at three times their largest
      * rendered size, and webp is used so the transparency survives.
      */
     public function registerMediaConversions(?Media $media = null): void
     {
         if ($media?->collection_name === 'logo') {
             $this->addMediaConversion('logo')
-                ->fit(Fit::Max, 900, 180)
+                ->fit(Fit::Max, 1200, 260)
                 ->format('webp')
                 ->nonQueued();
 
