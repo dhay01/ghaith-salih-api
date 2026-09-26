@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Models\Concerns\HasCoverImage;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -13,7 +15,9 @@ use Spatie\Translatable\HasTranslations;
  */
 class SiteSetting extends Model implements HasMedia
 {
-    use HasCoverImage;
+    use HasCoverImage {
+        registerMediaConversions as protected registerCoverConversions;
+    }
     use HasTranslations;
 
     protected $guarded = [];
@@ -33,15 +37,45 @@ class SiteSetting extends Model implements HasMedia
     }
 
     /**
-     * The wordmark shown in the site header, if one has been uploaded.
+     * A logo is not a photograph, so it does not want the photograph sizes.
      *
-     * Served as the file that was uploaded rather than through a conversion: a
-     * logo is already small, and re-encoding it only costs it sharpness at the
-     * exact size it is displayed.
+     * Left to the inherited conversions it would be re-encoded at 600, 1400 and
+     * 2600px, none of which it is ever displayed at. One conversion bounded by
+     * height covers both the header and the footer at up to three times their
+     * rendered size, and webp is used so the transparency survives.
+     */
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        if ($media?->collection_name === 'logo') {
+            $this->addMediaConversion('logo')
+                ->fit(Fit::Max, 900, 180)
+                ->format('webp')
+                ->nonQueued();
+
+            return;
+        }
+
+        $this->registerCoverConversions($media);
+    }
+
+    /**
+     * The logo, at a size worth sending.
+     *
+     * Falls back to the uploaded file if the conversion has not been generated —
+     * better a heavy logo than none, and it keeps working if GD ever refuses the
+     * file.
      */
     public function logoUrl(): ?string
     {
-        return $this->getFirstMedia('logo')?->getFullUrl();
+        $media = $this->getFirstMedia('logo');
+
+        if (! $media) {
+            return null;
+        }
+
+        return $media->hasGeneratedConversion('logo')
+            ? $media->getFullUrl('logo')
+            : $media->getFullUrl();
     }
 
     public static function current(): self
