@@ -1,0 +1,17 @@
+{
+  "name": "ghaith-api-edge",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  "placement": { "mode": "smart" },
+  "limits": { "cpu_ms": 30000 },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+  },
+  "routes": [
+    { "pattern": "api.ghaith-art.com/api/*", "zone_name": "ghaith-art.com" }
+  ]
+}
