@@ -4,41 +4,55 @@
     $record = $getRecord();
     $status = $record->dzi_status;
     $percent = $record->dzi_progress;
+    $working = in_array($status, [Photo::TILING_QUEUED, Photo::TILING_PROCESSING], true);
 
-    $label = match ($status) {
-        Photo::TILING_QUEUED => 'Waiting',
-        Photo::TILING_PROCESSING => $percent !== null ? "Building {$percent}%" : 'Building…',
+    // dzi_stage is written by the tiling job and says what it is doing right
+    // now. It is the useful line whenever there is one; the words below are the
+    // fallback for the states the job itself never reaches.
+    $headline = $record->dzi_stage ?: match ($status) {
+        Photo::TILING_QUEUED => 'Waiting for the queue worker',
+        Photo::TILING_PROCESSING => 'Working',
         Photo::TILING_READY => 'Ready',
         Photo::TILING_FAILED => 'Failed',
         default => null,
     };
+
+    $modifier = match (true) {
+        $status === Photo::TILING_READY => 'tiling--ready',
+        $status === Photo::TILING_FAILED => 'tiling--failed',
+        $status === Photo::TILING_QUEUED => 'tiling--working tiling--queued',
+        $working => 'tiling--working',
+        default => '',
+    };
 @endphp
 
-@if ($label === null)
-    <span class="text-sm text-gray-400">—</span>
+@if ($headline === null)
+    <span class="tiling__label">&mdash;</span>
 @else
-    <div class="w-32 space-y-1" @if ($record->dzi_error) title="{{ $record->dzi_error }}" @endif>
-        <span @class([
-            'text-xs font-medium',
-            'text-success-600 dark:text-success-400' => $status === Photo::TILING_READY,
-            'text-danger-600 dark:text-danger-400' => $status === Photo::TILING_FAILED,
-            'text-warning-600 dark:text-warning-400' => in_array($status, [Photo::TILING_QUEUED, Photo::TILING_PROCESSING], true),
-        ])>{{ $label }}</span>
 
-        {{-- The bar is only meaningful while work is in flight or has just finished. --}}
+    <div class="tiling {{ $modifier }}" @if ($record->dzi_error) title="{{ $record->dzi_error }}" @endif>
+        <div class="tiling__head">
+            <span class="tiling__label">{{ $headline }}</span>
+
+            {{-- The number only while it is moving: on a finished row it is noise. --}}
+            @if ($status === Photo::TILING_PROCESSING && $percent !== null)
+                <span class="tiling__percent">{{ $percent }}%</span>
+            @endif
+        </div>
+
         @if (in_array($status, [Photo::TILING_QUEUED, Photo::TILING_PROCESSING, Photo::TILING_READY], true))
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div class="tiling__track">
                 <div
-                    @class([
-                        'h-full rounded-full transition-all duration-500',
-                        'bg-success-500' => $status === Photo::TILING_READY,
-                        'bg-primary-500' => $status !== Photo::TILING_READY,
-                        {{-- Queued has no percentage yet, so it pulses instead of sitting at zero. --}}
-                        'animate-pulse' => $status === Photo::TILING_QUEUED,
-                    ])
+                    class="tiling__fill"
                     style="width: {{ $status === Photo::TILING_READY ? 100 : max($percent ?? 0, $status === Photo::TILING_QUEUED ? 8 : 2) }}%"
                 ></div>
             </div>
+        @endif
+
+        {{-- Tiling runs for minutes, so the reason it failed has to be readable
+             without hovering for a tooltip. --}}
+        @if ($status === Photo::TILING_FAILED && $record->dzi_error)
+            <p class="tiling__note tiling__note--error">{{ $record->dzi_error }}</p>
         @endif
     </div>
 @endif

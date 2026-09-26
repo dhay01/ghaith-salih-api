@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Photo;
+use Aws\CommandPool;
+use Closure;
 use FilesystemIterator;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,6 +31,24 @@ class GenerateDeepZoomTiles implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * The slice of the overall bar each phase owns.
+     *
+     * vips reports a percentage for its own slicing and nothing else, so a bar
+     * built on that alone reaches 100% and then sits there for the minutes the
+     * upload takes — which reads as a hung job. These weights are rough wall
+     * clock shares on a large panorama, so the bar keeps moving throughout.
+     */
+    private const STAGES = [
+        'fetching' => [0, 5],
+        'derivatives' => [5, 15],
+        'slicing' => [15, 70],
+        'uploading' => [70, 100],
+    ];
+
+    /** Parallel tile uploads. R2 is happy well past this; the queue worker's memory is the limit. */
+    private const UPLOAD_CONCURRENCY = 16;
+
     /** Tiling is expensive; a genuine failure should surface, not be retried blindly. */
     public int $tries = 1;
 
@@ -37,6 +57,25 @@ class GenerateDeepZoomTiles implements ShouldQueue
     public function timeout(): int
     {
         return (int) config('gigapixel.timeout');
+    }
+
+    /**
+     * Records what the job is doing right now, and how far along it is overall.
+     *
+     * @param  float|null  $fraction  progress within this phase, 0.0 to 1.0
+     */
+    protected function report(string $stage, string $label, ?float $fraction = null): void
+    {
+        [$from, $to] = self::STAGES[$stage];
+
+        // Quietly, by primary key: a progress ping is not a change worth waking
+        // the observer that queues tiling, and the model in hand is stale.
+        $this->photo->newQuery()
+            ->whereKey($this->photo->getKey())
+            ->update([
+                'dzi_stage' => $label,
+                'dzi_progress' => (int) round($from + ($to - $from) * max(0.0, min(1.0, $fraction ?? 0.0))),
+            ]);
     }
 
     public function handle(): void
@@ -55,6 +94,16 @@ class GenerateDeepZoomTiles implements ShouldQueue
             return;
         }
 
+        // Before the download, not after: streaming a multi-hundred-megabyte
+        // original off object storage is minutes of work on its own, and left
+        // until later the admin shows "Waiting" for all of it.
+        $photo->forceFill([
+            'dzi_status' => Photo::TILING_PROCESSING,
+            'dzi_progress' => 0,
+            'dzi_stage' => 'Fetching the original',
+            'dzi_error' => null,
+        ])->save();
+
         try {
             [$source, $deleteSource] = $this->materializeSource($media);
         } catch (Throwable $e) {
@@ -62,12 +111,6 @@ class GenerateDeepZoomTiles implements ShouldQueue
 
             return;
         }
-
-        $photo->forceFill([
-            'dzi_status' => Photo::TILING_PROCESSING,
-            'dzi_progress' => 0,
-            'dzi_error' => null,
-        ])->save();
 
         $disk = Storage::disk(config('gigapixel.disk'));
         $relativeBase = trim((string) config('gigapixel.directory'), '/').'/'.$photo->slug;
@@ -80,21 +123,25 @@ class GenerateDeepZoomTiles implements ShouldQueue
         [$absoluteBase, $scratch] = $this->vipsOutputBase($disk, $relativeBase);
         $dziMeta = null;
 
+        // Derivatives go up before tiling starts, so they are not re-sent after.
+        $synced = [];
+
         try {
             // Web-sized versions first: they are what the gallery grid and
             // lightbox need, and they are quick. Tiling can take minutes.
             if (Photo::isOversizedUpload($media)) {
-                $this->generateDerivatives($source, $absoluteBase, $photo);
+                $this->generateDerivatives($source, $absoluteBase);
 
                 // Web-sized files first, so the admin and gallery can preview
                 // while dzsave is still chewing on the original.
                 if ($scratch) {
-                    $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
+                    $this->report('derivatives', 'Uploading web-sized versions', 0.8);
+                    $synced = $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
                 }
             }
 
             if ($photo->is_zoomable) {
-                $this->runVips($source, $absoluteBase, $photo);
+                $this->runVips($source, $absoluteBase);
             }
 
             $dziMeta = $photo->is_zoomable
@@ -102,7 +149,17 @@ class GenerateDeepZoomTiles implements ShouldQueue
                 : null;
 
             if ($scratch) {
-                $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
+                $this->syncLocalTree(
+                    $scratch,
+                    $disk,
+                    dirname($relativeBase),
+                    $synced,
+                    fn (int $done, int $total) => $this->report(
+                        'uploading',
+                        'Uploading tiles · '.number_format($done).' of '.number_format($total),
+                        $total > 0 ? $done / $total : null,
+                    ),
+                );
             }
         } catch (ProcessTimedOutException) {
             $photo->markTilingFailed('Tiling exceeded the '.config('gigapixel.timeout').'s limit.');
@@ -133,6 +190,7 @@ class GenerateDeepZoomTiles implements ShouldQueue
             'dzi_path' => $photo->is_zoomable ? $relativeBase.'.dzi' : null,
             'dzi_meta' => $dziMeta,
             'dzi_status' => Photo::TILING_READY,
+            'dzi_stage' => null,
             'dzi_media_id' => $media->getKey(),
             'dzi_error' => null,
             'dzi_progress' => 100,
@@ -208,13 +266,67 @@ class GenerateDeepZoomTiles implements ShouldQueue
         return is_string($probe) && str_starts_with($probe, DIRECTORY_SEPARATOR);
     }
 
-    /** Uploads a vips scratch tree onto a remote disk, preserving relative paths. */
-    public function syncLocalTree(string $localDir, Filesystem $disk, string $prefix): void
+    /**
+     * Uploads a vips scratch tree onto a remote disk, preserving relative paths.
+     *
+     * A gigapixel pyramid is a few thousand small files. Sending them one
+     * round-trip at a time took longer than the tiling did, and when the job ran
+     * out of time part way through it left a pyramid that still looked finished:
+     * the .dzi descriptor was in place, so the viewer loaded it happily and then
+     * 404ed on most of its tiles. So this uploads in parallel where the driver
+     * allows it, and always finishes by listing what actually arrived.
+     *
+     * @param  array<string, true>  $skip  keys an earlier pass already uploaded
+     * @param  Closure(int, int): void|null  $onProgress  files done, files expected
+     * @return array<string, true>  every key now known to be on the disk
+     */
+    public function syncLocalTree(
+        string $localDir,
+        Filesystem $disk,
+        string $prefix,
+        array $skip = [],
+        ?Closure $onProgress = null,
+    ): array {
+        $files = $this->collectTree($localDir, $prefix);
+        $pending = array_diff_key($files, $skip);
+
+        $failure = $this->putAll($pending, $disk, $onProgress);
+        $missing = $this->missingFrom($files, $disk);
+
+        // A handful of tiles lost to a transient error is normal on a few
+        // thousand uploads, and re-sending only those is cheap.
+        if ($missing !== []) {
+            $failure ??= $this->putAll(array_intersect_key($files, $missing), $disk);
+            $missing = $this->missingFrom($files, $disk);
+        }
+
+        if ($missing !== []) {
+            throw new RuntimeException(sprintf(
+                '%d of %d files did not reach storage under %s (first: %s)%s',
+                count($missing),
+                count($files),
+                $prefix,
+                array_key_first($missing),
+                $failure ? '. Last upload error: '.$failure : '.',
+            ));
+        }
+
+        return array_fill_keys(array_keys($files), true);
+    }
+
+    /**
+     * Maps every file under a scratch directory to the disk key it belongs at.
+     *
+     * @return array<string, string> key => local path
+     */
+    protected function collectTree(string $localDir, string $prefix): array
     {
         $localDir = rtrim($localDir, DIRECTORY_SEPARATOR);
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($localDir, FilesystemIterator::SKIP_DOTS),
         );
+
+        $files = [];
 
         foreach ($iterator as $file) {
             if (! $file->isFile()) {
@@ -222,23 +334,160 @@ class GenerateDeepZoomTiles implements ShouldQueue
             }
 
             $relative = ltrim(str_replace($localDir, '', $file->getPathname()), DIRECTORY_SEPARATOR);
-            $key = trim($prefix.'/'.str_replace(DIRECTORY_SEPARATOR, '/', $relative), '/');
-            $stream = fopen($file->getPathname(), 'rb');
+            $files[trim($prefix.'/'.str_replace(DIRECTORY_SEPARATOR, '/', $relative), '/')] = $file->getPathname();
+        }
 
-            if ($stream === false) {
-                throw new RuntimeException('Could not read '.$file->getPathname().' for upload.');
-            }
+        return $files;
+    }
 
-            $disk->put($key, $stream, [
-                'visibility' => 'private',
-                'CacheControl' => 'public, max-age=31536000, immutable',
-                'ContentType' => $this->contentTypeFor($file->getExtension()),
-            ]);
+    /**
+     * Which of these keys the disk does not hold.
+     *
+     * One listing per directory rather than one existence check per file: a
+     * pyramid is thousands of tiles spread over a couple of dozen directories,
+     * and a per-file check would cost as much as the upload.
+     *
+     * @param  array<string, string>  $files
+     * @return array<string, true>
+     */
+    protected function missingFrom(array $files, Filesystem $disk): array
+    {
+        $byDirectory = [];
 
-            if (is_resource($stream)) {
-                fclose($stream);
+        foreach (array_keys($files) as $key) {
+            $byDirectory[dirname($key)][] = $key;
+        }
+
+        $missing = [];
+
+        foreach ($byDirectory as $directory => $keys) {
+            $present = array_fill_keys($disk->files($directory), true);
+
+            foreach ($keys as $key) {
+                if (! isset($present[$key])) {
+                    $missing[$key] = true;
+                }
             }
         }
+
+        return $missing;
+    }
+
+    /**
+     * @param  array<string, string>  $files  key => local path
+     * @param  Closure(int, int): void|null  $onProgress
+     * @return string|null  the first upload error, if any; callers verify regardless
+     */
+    protected function putAll(array $files, Filesystem $disk, ?Closure $onProgress = null): ?string
+    {
+        if ($files === []) {
+            return null;
+        }
+
+        $total = count($files);
+        $done = 0;
+
+        // One row per file would be thousands of writes for a pyramid; the bar
+        // cannot show more than about a percent of movement anyway.
+        $tick = function () use (&$done, $total, $onProgress): void {
+            $done++;
+
+            if ($onProgress && ($done % 25 === 0 || $done === $total)) {
+                $onProgress($done, $total);
+            }
+        };
+
+        if (($pooled = $this->putAllPooled($files, $disk, $tick)) !== false) {
+            return $pooled;
+        }
+
+        $failure = null;
+
+        foreach ($files as $key => $path) {
+            $stream = fopen($path, 'rb');
+
+            if ($stream === false) {
+                throw new RuntimeException('Could not read '.$path.' for upload.');
+            }
+
+            try {
+                $disk->put($key, $stream, [
+                    'visibility' => 'private',
+                    'CacheControl' => 'public, max-age=31536000, immutable',
+                    'ContentType' => $this->contentTypeFor(pathinfo($path, PATHINFO_EXTENSION)),
+                ]);
+            } catch (Throwable $e) {
+                $failure ??= $e->getMessage();
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+
+                $tick();
+            }
+        }
+
+        return $failure;
+    }
+
+    /**
+     * Parallel upload through the S3 client the disk wraps, when it wraps one.
+     *
+     * @param  array<string, string>  $files
+     * @param  Closure(): void  $tick  called once per finished file, ok or not
+     * @return string|null|false  false when this disk has no S3 client to borrow
+     */
+    protected function putAllPooled(array $files, Filesystem $disk, Closure $tick): string|null|false
+    {
+        if (! method_exists($disk, 'getClient') || ! class_exists(CommandPool::class)) {
+            return false;
+        }
+
+        $config = (array) config('filesystems.disks.'.config('gigapixel.disk'));
+        $bucket = $config['bucket'] ?? null;
+
+        if (! is_string($bucket) || $bucket === '') {
+            return false;
+        }
+
+        $root = trim((string) ($config['root'] ?? ''), '/');
+        $client = $disk->getClient();
+
+        $commands = (function () use ($files, $client, $bucket, $root) {
+            foreach ($files as $key => $path) {
+                $stream = fopen($path, 'rb');
+
+                if ($stream === false) {
+                    throw new RuntimeException('Could not read '.$path.' for upload.');
+                }
+
+                yield $client->getCommand('PutObject', [
+                    'Bucket' => $bucket,
+                    'Key' => $root === '' ? $key : $root.'/'.$key,
+                    'Body' => $stream,
+                    'CacheControl' => 'public, max-age=31536000, immutable',
+                    'ContentType' => $this->contentTypeFor(pathinfo($path, PATHINFO_EXTENSION)),
+                ]);
+            }
+        })();
+
+        $failure = null;
+
+        // The pool returns errors rather than throwing them, which suits us: the
+        // caller verifies the whole tree afterwards either way.
+        $results = CommandPool::batch($client, $commands, [
+            'concurrency' => self::UPLOAD_CONCURRENCY,
+            'fulfilled' => fn () => $tick(),
+            'rejected' => fn () => $tick(),
+        ]);
+
+        foreach ($results as $result) {
+            if ($result instanceof Throwable) {
+                $failure ??= $result->getMessage();
+            }
+        }
+
+        return $failure;
     }
 
     protected function contentTypeFor(string $extension): string
@@ -257,12 +506,16 @@ class GenerateDeepZoomTiles implements ShouldQueue
      * Web-sized versions of an original too large for GD. `vips thumbnail` reads
      * only the resolution it needs, so this stays cheap even on a huge file.
      */
-    protected function generateDerivatives(string $source, string $absoluteBase, Photo $photo): void
+    protected function generateDerivatives(string $source, string $absoluteBase): void
     {
         $derivatives = (array) config('gigapixel.derivatives');
         $done = 0;
 
+        $total = max(1, count($derivatives));
+
         foreach ($derivatives as $name => $longestEdge) {
+            $this->report('derivatives', 'Making web-sized versions · '.$name, $done / $total);
+
             $process = new Process([
                 (string) config('gigapixel.binary'),
                 'thumbnail',
@@ -282,12 +535,7 @@ class GenerateDeepZoomTiles implements ShouldQueue
                 );
             }
 
-            // Nudges the bar so it is not pinned at zero for the whole of this
-            // phase, which on a large file is most of the run. Tiling's own
-            // percentages start at 5 and take over from here.
-            $photo->newQuery()
-                ->whereKey($photo->getKey())
-                ->update(['dzi_progress' => ++$done]);
+            $this->report('derivatives', 'Making web-sized versions · '.$name, ++$done / $total);
         }
     }
 
@@ -324,7 +572,7 @@ class GenerateDeepZoomTiles implements ShouldQueue
         ];
     }
 
-    protected function runVips(string $source, string $absoluteBase, Photo $photo): void
+    protected function runVips(string $source, string $absoluteBase): void
     {
         $process = new Process([
             (string) config('gigapixel.binary'),
@@ -341,7 +589,7 @@ class GenerateDeepZoomTiles implements ShouldQueue
 
         $lastWritten = 0;
 
-        $process->run(function (string $type, string $buffer) use ($photo, &$lastWritten): void {
+        $process->run(function (string $type, string $buffer) use (&$lastWritten): void {
             if (! preg_match_all('/(\d+)% complete/', $buffer, $matches)) {
                 return;
             }
@@ -356,11 +604,7 @@ class GenerateDeepZoomTiles implements ShouldQueue
 
             $lastWritten = $percent;
 
-            // Quietly: this is a progress ping, not a change worth waking the
-            // observer that queues tiling.
-            $photo->newQuery()
-                ->whereKey($photo->getKey())
-                ->update(['dzi_progress' => min(100, $percent)]);
+            $this->report('slicing', 'Slicing tiles · '.min(100, $percent).'%', min(100, $percent) / 100);
         });
 
         if (! $process->isSuccessful()) {

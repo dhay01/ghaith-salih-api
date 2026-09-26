@@ -10,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class PhotoForm
@@ -42,6 +43,13 @@ class PhotoForm
                     LargeFileUpload::make('large_original')
                         ->label('Upload a large original')
                         ->helperText('Replaces the current image. Deep zoom tiles are rebuilt automatically afterwards.'),
+
+                    // Tiling runs for minutes after the upload finishes, and this
+                    // is the page you are left on when it starts, so the progress
+                    // belongs here rather than only in the list.
+                    View::make('filament.forms.tiling-status')
+                        ->visible(fn ($operation) => $operation === 'edit')
+                        ->columnSpanFull(),
                 ]),
 
             Section::make('Caption')->schema([

@@ -151,6 +151,7 @@ class Photo extends Model implements HasMedia
             'dzi_status' => self::TILING_QUEUED,
             'dzi_error' => null,
             'dzi_progress' => null,
+            'dzi_stage' => 'Waiting for the queue worker',
         ])->saveQuietly();
 
         GenerateDeepZoomTiles::dispatch($photo);
@@ -162,6 +163,7 @@ class Photo extends Model implements HasMedia
             'dzi_status' => self::TILING_FAILED,
             'dzi_error' => $reason,
             'dzi_progress' => null,
+            'dzi_stage' => null,
         ])->save();
     }
 
