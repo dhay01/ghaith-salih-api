@@ -49,6 +49,11 @@ class ManageSiteSettings extends Page
                         ->conversion('logo')
                         ->maxSize(2048)
                         ->label('Logo')
+                        // Without this it renders as a bare file input: no
+                        // thumbnail of what is already set, and nothing showing
+                        // there is anything to replace.
+                        ->image()
+                        ->conversion('logo')
                         // PNG only: the header needs a transparent background, and
                         // a JPEG cannot carry one — it would arrive with a white
                         // box baked around it on a dark page.

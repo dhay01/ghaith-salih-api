@@ -96,6 +96,24 @@ class SiteLogoTest extends TestCase
             ->assertJsonPath('data.logo', $media->getFullUrl('logo'));
     }
 
+    public function test_uploading_a_second_logo_replaces_the_first(): void
+    {
+        $site = $this->withLogo();
+        $first = $site->getFirstMedia('logo')->id;
+
+        $site->addMedia($this->png(600, 200))
+            ->preservingOriginal()
+            ->toMediaCollection('logo');
+
+        $site = $site->fresh();
+
+        // Without singleFile() the second upload is added alongside the first and
+        // getFirstMedia keeps returning the original, so replacing a logo looks
+        // like it did nothing — and a broken one can never be replaced.
+        $this->assertCount(1, $site->getMedia('logo'));
+        $this->assertNotSame($first, $site->getFirstMedia('logo')->id);
+    }
+
     public function test_the_api_reports_no_logo_when_none_is_uploaded(): void
     {
         SiteSetting::current();

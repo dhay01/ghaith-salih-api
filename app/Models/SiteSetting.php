@@ -16,6 +16,7 @@ use Spatie\Translatable\HasTranslations;
 class SiteSetting extends Model implements HasMedia
 {
     use HasCoverImage {
+        registerMediaCollections as protected registerCoverCollections;
         registerMediaConversions as protected registerCoverConversions;
     }
     use HasTranslations;
@@ -34,6 +35,23 @@ class SiteSetting extends Model implements HasMedia
     public function coverCollection(): string
     {
         return 'author_photo';
+    }
+
+    /**
+     * The logo is its own collection, and only ever holds one file.
+     *
+     * Without singleFile() a second upload is added rather than replacing the
+     * first, and getFirstMedia() keeps returning the original — so replacing a
+     * logo appears to do nothing, and a broken one cannot be replaced at all.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->registerCoverCollections();
+
+        $this->addMediaCollection('logo')
+            ->singleFile()
+            ->useDisk(config('media-library.disk_name', 'public'))
+            ->acceptsMimeTypes(['image/png']);
     }
 
     /**
