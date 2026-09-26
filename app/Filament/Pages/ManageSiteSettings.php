@@ -99,7 +99,12 @@ class ManageSiteSettings extends Page
                         ]),
                 ]),
             ])
-            ->statePath('data');
+            ->statePath('data')
+            // Media fields read the collection off the bound model. Without this
+            // they have nothing to look in and render empty however many files
+            // are stored — the file appears lost, and there is nothing on screen
+            // to delete or replace.
+            ->model(SiteSetting::current());
     }
 
     protected function getFormActions(): array
