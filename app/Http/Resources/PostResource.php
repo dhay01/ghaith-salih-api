@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 
 /** @mixin \App\Models\Post */
@@ -30,6 +31,11 @@ class PostResource extends JsonResource
     }
 
     /**
+     * The dashboard's Builder stores every block as {type, data: {...}}; the article
+     * page reads them flat ({type, paragraphs}, {type, text}, ...). Keys a block
+     * carries outside `data` are kept wherever `data` has nothing to say, so a body
+     * written flat (the old seed shape) still renders.
+     *
      * In-body figures are stored as a disk path so the dashboard can upload one
      * inline; the frontend only ever wants a URL.
      *
@@ -39,7 +45,12 @@ class PostResource extends JsonResource
     {
         return collect($this->body ?? [])
             ->map(function (array $block): array {
-                if (($block['type'] ?? null) === 'figure' && ! empty($block['path'])) {
+                $block = array_merge(
+                    Arr::except($block, 'data'),
+                    array_filter($block['data'] ?? [], fn ($value) => filled($value)),
+                );
+
+                if (($block['type'] ?? null) === 'figure' && filled($block['path'] ?? null)) {
                     $block['src'] = Storage::disk(config('media-library.disk_name'))->url($block['path']);
                 }
 
