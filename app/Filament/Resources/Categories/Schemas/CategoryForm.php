@@ -38,7 +38,7 @@ class CategoryForm
             ]),
 
             Section::make('Home page showcase')
-                ->description('Only used by gallery filters featured on the home page. Leave the span empty to keep a category out of the showcase.')
+                ->description('How this category appears under “Featured galleries” on the home page. The first four categories with a tile width are shown; leave the width empty to keep a category out.')
                 ->visible(fn ($get) => $get('type') === Category::TYPE_WORK)
                 ->columns(2)
                 ->schema([
@@ -46,11 +46,13 @@ class CategoryForm
                         ->numeric()
                         ->minValue(1)
                         ->maxValue(12)
-                        ->label('Grid span'),
+                        ->label('Tile width')
+                        ->helperText('Out of 12 across a row: 7 and 5 share a row, 12 takes a row alone. A row that comes up short is widened to fill the page.'),
 
                     TextInput::make('grid_ratio')
-                        ->label('Grid ratio')
-                        ->placeholder('16/11'),
+                        ->label('Tile shape')
+                        ->placeholder('16/11')
+                        ->helperText('Width/height, such as 16/11 or 4/5; 3/2 when empty. Tiles in a row share one height, capped at 40% of the screen.'),
 
                     CoverImageUpload::make('image')
                         ->collection('image')
