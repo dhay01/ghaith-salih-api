@@ -35,7 +35,11 @@ class PhotosTable
                 TextColumn::make('title')->searchable()->sortable(),
                 TextColumn::make('category.slug')->label('Category')->badge()->sortable(),
                 TextColumn::make('location')->toggleable(),
-                TextColumn::make('ratio')->badge()->color('gray'),
+                TextColumn::make('ratio')
+                    ->label('Shape')
+                    ->state(fn (Photo $record) => $record->imageRatio() ?? $record->ratio)
+                    ->badge()
+                    ->color('gray'),
 
                 IconColumn::make('is_zoomable')->label('Zoom')->boolean(),
 

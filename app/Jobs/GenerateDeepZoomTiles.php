@@ -138,6 +138,15 @@ class GenerateDeepZoomTiles implements ShouldQueue
                     $this->report('derivatives', 'Uploading web-sized versions', 0.8);
                     $synced = $this->syncLocalTree($scratch, $disk, dirname($relativeBase));
                 }
+
+                // A large upload has no GD thumbnail to measure on upload; its
+                // vips one exists from here. A failed measurement must not fail
+                // the tiling.
+                try {
+                    $photo->rememberShapeOf($media);
+                } catch (Throwable $e) {
+                    report($e);
+                }
             }
 
             if ($photo->is_zoomable) {

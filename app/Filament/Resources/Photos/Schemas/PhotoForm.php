@@ -7,7 +7,6 @@ use App\Filament\Forms\Components\LargeFileUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
@@ -69,10 +68,6 @@ class PhotoForm
                     )
                     ->searchable()
                     ->preload(),
-
-                TextInput::make('ratio')
-                    ->default('3/2')
-                    ->helperText('Aspect ratio, e.g. 16/10. Reserves the gallery cell before the image loads.'),
 
                 Toggle::make('is_zoomable')
                     ->label('Deep zoom')

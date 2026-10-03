@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use Illuminate\Support\Facades\Storage;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -69,6 +70,54 @@ trait HasCoverImage
     public function coverCollection(): string
     {
         return 'image';
+    }
+
+    /**
+     * The uploaded image's own proportions as "width/height", once measured. Read
+     * from the file rather than typed in, so a portrait or a panorama is laid out
+     * at its real shape instead of being cropped to a default.
+     */
+    public function imageRatio(): ?string
+    {
+        return $this->getFirstMedia($this->coverCollection())?->getCustomProperty('ratio');
+    }
+
+    /**
+     * Records a media item's proportions on it, measured from its smallest web
+     * version: a few kilobytes to fetch even when the original is hundreds of
+     * megabytes on object storage.
+     */
+    public function rememberShapeOf(Media $media): void
+    {
+        $bytes = $media->hasGeneratedConversion('thumb')
+            ? Storage::disk($media->conversions_disk ?: $media->disk)->get($media->getPathRelativeToRoot('thumb'))
+            : $this->derivativeThumbBytes();
+
+        $size = $bytes ? @getimagesizefromstring($bytes) : false;
+
+        if (! $size || $size[0] < 1 || $size[1] < 1) {
+            return;
+        }
+
+        [$width, $height] = $size;
+        $divisor = self::greatestCommonDivisor($width, $height);
+
+        $media->setCustomProperty('ratio', intdiv($width, $divisor).'/'.intdiv($height, $divisor))->saveQuietly();
+    }
+
+    /** Overridden by models whose large uploads get their web versions from vips. */
+    protected function derivativeThumbBytes(): ?string
+    {
+        return null;
+    }
+
+    private static function greatestCommonDivisor(int $a, int $b): int
+    {
+        while ($b !== 0) {
+            [$a, $b] = [$b, $a % $b];
+        }
+
+        return $a;
     }
 
     public static function isOversizedUpload(Media $media): bool

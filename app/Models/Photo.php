@@ -132,6 +132,11 @@ class Photo extends Model implements HasMedia
         return $urls;
     }
 
+    protected function derivativeThumbBytes(): ?string
+    {
+        return Storage::disk(config('gigapixel.disk'))->get($this->derivativeBase().'-thumb.webp');
+    }
+
     /**
      * Dispatches tiling if it is actually needed, and marks the photo queued so the
      * dashboard can say so. Safe to call more than once for the same upload — the

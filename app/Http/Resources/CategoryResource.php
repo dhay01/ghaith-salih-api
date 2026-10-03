@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -10,6 +11,8 @@ class CategoryResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $tile = $this->tileSource();
+
         return [
             'slug' => $this->slug,
             'name' => $this->name,
@@ -18,7 +21,8 @@ class CategoryResource extends JsonResource
             'grid_ratio' => $this->grid_ratio,
             // Only present when the caller asked for counts.
             'photos_count' => $this->whenCounted('photos'),
-            'images' => $this->tileImageUrls(),
+            'images' => $tile?->imageUrls(),
+            'ratio' => $tile?->imageRatio() ?? ($tile instanceof Photo ? $tile->ratio : null),
         ];
     }
 }

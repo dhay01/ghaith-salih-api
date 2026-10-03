@@ -16,7 +16,8 @@ class PhotoResource extends JsonResource
             'location' => $this->location,
             'gear' => $this->gear,
             'alt' => $this->alt ?: $this->title,
-            'ratio' => $this->ratio,
+            // Measured from the image itself; the typed ratio only stands in until one is uploaded.
+            'ratio' => $this->imageRatio() ?? $this->ratio,
             // What the visitor can actually do, not what the dashboard asked for:
             // a photo flagged for deep zoom whose tiles are still being built is
             // not yet zoomable, and offering the control would dead-end.
