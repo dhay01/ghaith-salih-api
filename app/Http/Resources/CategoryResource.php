@@ -19,6 +19,7 @@ class CategoryResource extends JsonResource
             'position' => $this->position,
             'grid_span' => $this->grid_span,
             'grid_ratio' => $this->grid_ratio,
+            'show_on_home' => $this->show_on_home,
             // Only present when the caller asked for counts.
             'photos_count' => $this->whenCounted('photos'),
             'images' => $tile?->imageUrls(),

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Categories\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -23,6 +24,7 @@ class CategoriesTable
                 TextColumn::make('type')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => $state === Category::TYPE_WORK ? 'Gallery' : 'Blog'),
+                IconColumn::make('show_on_home')->label('Home page')->boolean(),
                 TextColumn::make('photos_count')->counts('photos')->label('Photos'),
                 TextColumn::make('posts_count')->counts('posts')->label('Posts'),
             ])

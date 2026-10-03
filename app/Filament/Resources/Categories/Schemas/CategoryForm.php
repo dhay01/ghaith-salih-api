@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
-use App\Filament\Forms\Components\CoverImageUpload;
 use App\Filament\Support\Translatable;
 use App\Models\Category;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -37,27 +37,34 @@ class CategoryForm
                 Translatable::text('name', 'Name'),
             ]),
 
-            Section::make('Home page showcase')
-                ->description('How this category appears under “Featured galleries” on the home page. The first four categories with a tile width are shown; leave the width empty to keep a category out.')
+            Section::make('Home page')
                 ->visible(fn ($get) => $get('type') === Category::TYPE_WORK)
-                ->columns(2)
                 ->schema([
-                    TextInput::make('grid_span')
-                        ->numeric()
-                        ->minValue(1)
-                        ->maxValue(12)
-                        ->label('Tile width')
-                        ->helperText('Out of 12 across a row: 7 and 5 share a row, 12 takes a row alone. A row that comes up short is widened to fill the page.'),
+                    Toggle::make('show_on_home')
+                        ->label('Show on the home page')
+                        ->helperText('Adds this category to “Featured galleries”. Up to four are shown, using each category\'s newest photo.'),
 
-                    TextInput::make('grid_ratio')
-                        ->label('Tile shape')
-                        ->placeholder('16/11')
-                        ->helperText('Width/height, such as 16/11 or 4/5; 3/2 when empty. Tiles in a row share one height, capped at 40% of the screen.'),
-
-                    CoverImageUpload::make('image')
-                        ->collection('image')
-                        ->label('Showcase image')
-                        ->columnSpanFull(),
+                    // The hand-set showcase this switch replaced, kept to go back to.
+                    // Restoring it also needs `use App\Filament\Forms\Components\CoverImageUpload;`
+                    // and the home page reading grid_span and grid_ratio again.
+                    //
+                    // TextInput::make('grid_span')
+                    //     ->numeric()
+                    //     ->minValue(1)
+                    //     ->maxValue(12)
+                    //     ->label('Tile width')
+                    //     ->helperText('Out of 12 across a row: 7 and 5 share a row, 12 takes a row alone. A row that comes up short is widened to fill the page.'),
+                    //
+                    // TextInput::make('grid_ratio')
+                    //     ->label('Tile shape')
+                    //     ->placeholder('16/11')
+                    //     ->helperText('Width/height, such as 16/11 or 4/5; 3/2 when empty. Tiles in a row share one height, capped at 40% of the screen.'),
+                    //
+                    // CoverImageUpload::make('image')
+                    //     ->collection('image')
+                    //     ->label('Showcase image')
+                    //     ->helperText('Optional. The tile shows this category\'s newest photograph; this image is only used while the category has none.')
+                    //     ->columnSpanFull(),
                 ]),
         ]);
     }

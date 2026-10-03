@@ -32,6 +32,7 @@ class Category extends Model implements HasMedia
         return [
             'position' => 'integer',
             'grid_span' => 'integer',
+            'show_on_home' => 'boolean',
         ];
     }
 

@@ -88,24 +88,27 @@ class UploadPreviewTest extends TestCase
         $this->assertFieldHoldsAFile($page, 'gear_image');
     }
 
-    public function test_a_category_image_shows_when_editing(): void
-    {
-        $category = Category::create([
-            'type' => Category::TYPE_WORK,
-            'slug' => 'preview-check',
-            'name' => ['en' => 'Preview check'],
-            'position' => 1,
-        ]);
-        $category->addMedia($this->png())->toMediaCollection('image');
-        $category->refresh();
-
-        $this->actingAs($this->admin());
-
-        $this->assertFieldHoldsAFile(
-            Livewire::test(EditCategory::class, ['record' => $category->getRouteKey()]),
-            'image',
-        );
-    }
+    // Covers the category "Showcase image" field, which is commented out in
+    // CategoryForm while tiles use the newest photo. Restore the two together.
+    //
+    // public function test_a_category_image_shows_when_editing(): void
+    // {
+    //     $category = Category::create([
+    //         'type' => Category::TYPE_WORK,
+    //         'slug' => 'preview-check',
+    //         'name' => ['en' => 'Preview check'],
+    //         'position' => 1,
+    //     ]);
+    //     $category->addMedia($this->png())->toMediaCollection('image');
+    //     $category->refresh();
+    //
+    //     $this->actingAs($this->admin());
+    //
+    //     $this->assertFieldHoldsAFile(
+    //         Livewire::test(EditCategory::class, ['record' => $category->getRouteKey()]),
+    //         'image',
+    //     );
+    // }
 
     public function test_a_hero_slide_image_shows_when_editing(): void
     {
