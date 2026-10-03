@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Arr;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
@@ -45,6 +46,48 @@ class Workshop extends Model implements HasMedia
             'is_published' => 'boolean',
             'accepts_reservations' => 'boolean',
         ];
+    }
+
+    /**
+     * A row added in the dashboard and left blank used to be saved as it was, and
+     * the workshop page rendered it as an empty bullet, day or question.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $workshop): void {
+            foreach (['outcomes', 'included', 'prerequisites', 'syllabus', 'faqs'] as $column) {
+                $workshop->{$column} = static::withoutBlankRows($workshop->{$column});
+            }
+        });
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $rows
+     * @return array<int, mixed>|null
+     */
+    protected static function withoutBlankRows(?array $rows): ?array
+    {
+        if ($rows === null) {
+            return null;
+        }
+
+        $kept = [];
+
+        foreach ($rows as $row) {
+            if (is_array($row) && is_array($row['slots'] ?? null)) {
+                $row['slots'] = static::withoutBlankRows($row['slots']);
+            }
+
+            $filled = is_array($row)
+                ? collect(Arr::flatten($row))->contains(fn ($value) => filled($value))
+                : filled($row);
+
+            if ($filled) {
+                $kept[] = $row;
+            }
+        }
+
+        return $kept;
     }
 
     public function getSlugOptions(): SlugOptions
