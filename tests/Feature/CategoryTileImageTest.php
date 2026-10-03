@@ -8,9 +8,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A category with photographs in it but no cover of its own rendered as an empty
- * labelled tile. That reads as broken rather than as unset, because the
- * photographs are visibly right there in the category.
+ * A category's tile shows its newest photograph, so uploading work is all it
+ * takes to keep the home page and the work page current. A cover uploaded for
+ * the category only stands in while it has no photographs.
  */
 class CategoryTileImageTest extends TestCase
 {
@@ -63,18 +63,29 @@ class CategoryTileImageTest extends TestCase
         $this->assertSame($photo->imageUrls()['preview'], $urls['preview']);
     }
 
-    public function test_its_own_cover_still_wins(): void
+    public function test_its_newest_photograph_wins_over_a_cover_set_in_the_dashboard(): void
     {
         $category = $this->category();
-        $this->photoIn($category);
+        $this->travelTo(now()->subDay());
+        $this->photoIn($category, position: 1);
+        $this->travelBack();
+        $newest = $this->photoIn($category, position: 2);
+        $category->addMedia($this->jpeg())->toMediaCollection('image');
+
+        $this->assertSame(
+            $newest->imageUrls()['preview'],
+            $category->fresh()->tileImageUrls()['preview'],
+            'the tile should follow the latest upload, not a cover picked by hand',
+        );
+    }
+
+    public function test_a_cover_set_in_the_dashboard_stands_in_until_there_are_photographs(): void
+    {
+        $category = $this->category();
         $category->addMedia($this->jpeg())->toMediaCollection('image');
         $category = $category->fresh();
 
-        $this->assertSame(
-            $category->imageUrls()['preview'],
-            $category->tileImageUrls()['preview'],
-            'choosing a cover must remain a decision the dashboard can make',
-        );
+        $this->assertSame($category->imageUrls()['preview'], $category->tileImageUrls()['preview']);
     }
 
     public function test_an_unpublished_photograph_is_not_borrowed(): void

@@ -46,26 +46,31 @@ class Category extends Model implements HasMedia
     }
 
     /**
-     * What a category's tile shows: its own cover when one is set, otherwise its
-     * newest published photograph that has an image.
-     *
-     * A category with photographs in it but no cover of its own rendered as an
-     * empty labelled tile, which reads as broken rather than as unset — the
-     * photographs are right there. Its own image still wins when one is set, so
-     * choosing a cover is a decision, not a chore.
+     * What a category's tile shows: its newest published photograph that has an
+     * image, so uploading work is all it takes to keep the tile current. A cover
+     * uploaded for the category is only a stand-in until it has photographs.
      */
     public function tileSource(): ?Model
     {
-        if ($this->getFirstMedia($this->coverCollection())) {
-            return $this;
-        }
+        // A cover chosen in the dashboard used to win over the photographs.
+        // To go back to that, restore this block:
+        //
+        // if ($this->getFirstMedia($this->coverCollection())) {
+        //     return $this;
+        // }
 
-        return $this->photos()
+        $newest = $this->photos()
             ->where('is_published', true)
             ->latest()
             ->latest('id')
             ->get()
             ->first(fn (Photo $photo) => $photo->imageUrls() !== null);
+
+        if ($newest) {
+            return $newest;
+        }
+
+        return $this->getFirstMedia($this->coverCollection()) ? $this : null;
     }
 
     public function tileImageUrls(): ?array
