@@ -39,7 +39,7 @@ class PageSeeder extends Seeder
                         'items' => [
                             ['value' => '12', 'label' => "Years behind\nthe lens"],
                             ['value' => '52K', 'label' => "Instagram\ncommunity"],
-                            ['value' => '5', 'label' => "Solo\nexhibitions"],
+                            ['value' => '5', 'label' => "Students\ntrained"],
                         ],
                     ],
                     [
