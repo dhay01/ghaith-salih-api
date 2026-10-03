@@ -124,7 +124,9 @@ class ContentController extends Controller
                 $request->filled('category'),
                 fn ($q) => $q->whereRelation('category', 'slug', $request->string('category')),
             )
-            ->orderBy('position')
+            // Newest first: photographs are not ordered by hand.
+            ->latest()
+            ->latest('id')
             ->get();
 
         return PhotoResource::collection($photos);

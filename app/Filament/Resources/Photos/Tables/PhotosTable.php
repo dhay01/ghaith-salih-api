@@ -28,8 +28,7 @@ class PhotosTable
                     ? '3s'
                     : null,
             )
-            ->defaultSort('position')
-            ->reorderable('position')
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 WebImageColumn::thumb(),
 
