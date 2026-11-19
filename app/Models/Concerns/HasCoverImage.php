@@ -8,7 +8,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * One image per record, with the three sizes the frontend actually asks for.
+ * One image per record, with the sizes the frontend actually asks for.
  *
  * Conversions are non-queued: this is a low-volume dashboard and a photographer
  * uploading a cover expects to see it immediately, not after a worker runs.
@@ -64,6 +64,14 @@ trait HasCoverImage
         $this->addMediaConversion('full')
             ->fit(Fit::Max, 3600, 3600)
             ->format('webp')
+            ->nonQueued();
+
+        // For link previews: WhatsApp drops images of several megabytes and not
+        // every app reads WebP, so this one is a small JPG.
+        $this->addMediaConversion('share')
+            ->fit(Fit::Max, 1200, 1200)
+            ->format('jpg')
+            ->quality(80)
             ->nonQueued();
     }
 
@@ -172,6 +180,7 @@ trait HasCoverImage
             'thumb' => $this->generatedConversionUrl($media, 'thumb'),
             'preview' => $this->generatedConversionUrl($media, 'preview'),
             'full' => $this->generatedConversionUrl($media, 'full'),
+            'share' => $this->generatedConversionUrl($media, 'share'),
             'original' => $media->getFullUrl(),
         ];
     }
